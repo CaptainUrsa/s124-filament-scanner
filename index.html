@@ -784,7 +784,83 @@
 
     }
 
-
+    async function configureCamera() {
+      try {
+    
+        const video =
+          document.getElementById(
+            "video"
+          );
+    
+        if (
+          !video ||
+          !video.srcObject
+        ) {
+          return;
+        }
+    
+        const tracks =
+          video.srcObject
+            .getVideoTracks();
+    
+        if (
+          !tracks ||
+          tracks.length === 0
+        ) {
+          return;
+        }
+    
+        const track =
+          tracks[0];
+    
+        if (
+          typeof track.getCapabilities ===
+          "function"
+        ) {
+    
+          const capabilities =
+            track.getCapabilities();
+    
+          if (
+            capabilities.focusMode &&
+            capabilities.focusMode.includes(
+              "continuous"
+            )
+          ) {
+    
+            try {
+    
+              await track.applyConstraints({
+                advanced: [
+                  {
+                    focusMode:
+                      "continuous"
+                  }
+                ]
+              });
+    
+            } catch (error) {
+    
+              console.log(
+                "Continuous autofocus unavailable:",
+                error
+              );
+    
+            }
+    
+          }
+    
+        }
+    
+      } catch (error) {
+    
+        console.log(
+          "Camera configuration error:",
+          error
+        );
+    
+      }
+    }
 
     async function startSession(
       action
