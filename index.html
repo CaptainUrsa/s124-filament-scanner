@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
 
@@ -8,9 +9,8 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>S124 Filament Scanner</title>
+  <title>S124 Filament Management</title>
 
-  <!-- ZXing Browser -->
   <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 
   <style>
@@ -42,17 +42,20 @@
 
     .header h1 {
       margin: 0;
+
       color: #004681;
       font-size: 28px;
     }
 
     .header p {
       margin: 8px 0 0;
+
       color: #667085;
       font-size: 15px;
     }
 
     .card {
+      margin-bottom: 16px;
       padding: 18px;
 
       border: 1px solid #dbe3ec;
@@ -65,10 +68,128 @@
         rgba(31, 41, 55, 0.08);
     }
 
+    .hidden {
+      display: none !important;
+    }
+
+    label {
+      display: block;
+
+      margin-bottom: 7px;
+
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+
+      margin-bottom: 16px;
+      padding: 13px;
+
+      border: 1px solid #d0d5dd;
+      border-radius: 10px;
+
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: 2px solid #84caff;
+      border-color: #1570ef;
+    }
+
+    button {
+      width: 100%;
+
+      padding: 14px;
+
+      border: 0;
+      border-radius: 12px;
+
+      background: #005bac;
+      color: white;
+
+      font-size: 16px;
+      font-weight: 700;
+
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    button:active {
+      transform: scale(0.99);
+    }
+
+    .secondary {
+      background: #475467;
+    }
+
+    .danger {
+      background: #b42318;
+    }
+
+    .action-grid {
+      display: grid;
+
+      grid-template-columns:
+        1fr 1fr;
+
+      gap: 12px;
+    }
+
+    .action-button {
+      min-height: 105px;
+
+      font-size: 18px;
+    }
+
+    .action-button span {
+      display: block;
+
+      margin-bottom: 8px;
+
+      font-size: 30px;
+    }
+
+    .session-header {
+      display: flex;
+
+      align-items: center;
+      justify-content: space-between;
+
+      margin-bottom: 14px;
+    }
+
+    .session-title {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .session-operator {
+      margin-top: 4px;
+
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .count-badge {
+      padding: 8px 12px;
+
+      border-radius: 999px;
+
+      background: #eaf2fb;
+      color: #005bac;
+
+      font-size: 14px;
+      font-weight: 800;
+    }
+
     .camera-wrap {
       position: relative;
-
-      display: none;
 
       width: 100%;
       overflow: hidden;
@@ -78,16 +199,11 @@
       background: #111827;
     }
 
-    .camera-wrap.show {
-      display: block;
-    }
-
     video {
       display: block;
 
       width: 100%;
-      min-height: 260px;
-      max-height: 420px;
+      height: 300px;
 
       object-fit: cover;
 
@@ -101,7 +217,7 @@
       left: 50%;
 
       width: 88%;
-      height: 105px;
+      height: 100px;
 
       transform:
         translate(-50%, -50%);
@@ -128,42 +244,16 @@
       width: 84%;
       height: 2px;
 
-      background: #ef4444;
-
       transform:
         translateY(-50%);
+
+      background: #ef4444;
 
       pointer-events: none;
     }
 
-    button {
-      width: 100%;
-
-      margin-top: 14px;
-      padding: 15px;
-
-      border: 0;
-      border-radius: 12px;
-
-      background: #005bac;
-      color: white;
-
-      font-size: 16px;
-      font-weight: 700;
-
-      cursor: pointer;
-    }
-
-    button:active {
-      background: #004681;
-    }
-
-    .secondary {
-      background: #475467;
-    }
-
     .status {
-      margin-top: 14px;
+      margin-top: 10px;
 
       color: #667085;
       font-size: 13px;
@@ -171,122 +261,180 @@
       text-align: center;
     }
 
-    .camera-info {
-      margin-top: 7px;
-
-      color: #98a2b3;
-      font-size: 12px;
-
-      text-align: center;
-    }
-
-    .result {
+    .last-scan {
       display: none;
 
-      margin-top: 18px;
-      padding: 20px;
-
-      border: 2px solid #16a34a;
-      border-radius: 16px;
-
-      background: #ecfdf3;
-
-      text-align: center;
-    }
-
-    .result.show {
-      display: block;
-    }
-
-    .result-label {
-      color: #667085;
-
-      font-size: 12px;
-      font-weight: 700;
-
-      text-transform: uppercase;
-    }
-
-    .barcode {
-      margin-top: 8px;
-
-      color: #12314d;
-
-      font-size: 27px;
-      font-weight: 800;
-
-      word-break: break-all;
-    }
-
-    .format {
-      margin-top: 6px;
-
-      color: #667085;
-      font-size: 13px;
-    }
-
-    .error {
-      display: none;
-
-      margin-top: 14px;
+      margin-top: 12px;
       padding: 12px;
 
-      border: 1px solid #efb4b4;
       border-radius: 12px;
 
-      background: #fff1f1;
-      color: #9b1c1c;
-
-      font-size: 14px;
-    }
-
-    .error.show {
-      display: block;
-    }
-
-    .manual {
-      margin-top: 22px;
-      padding-top: 20px;
-
-      border-top: 1px solid #dbe3ec;
-    }
-
-    .manual label {
-      display: block;
-
-      margin-bottom: 8px;
+      background: #ecfdf3;
+      color: #027a48;
 
       font-size: 14px;
       font-weight: 700;
+
+      text-align: center;
     }
 
-    .manual-row {
+    .last-scan.show {
+      display: block;
+    }
+
+    .session-list {
+      margin-top: 18px;
+    }
+
+    .empty {
+      padding: 24px 10px;
+
+      color: #98a2b3;
+
+      text-align: center;
+    }
+
+    .item {
+      display: grid;
+
+      grid-template-columns:
+        1fr auto;
+
+      gap: 12px;
+
+      padding: 14px 0;
+
+      border-bottom: 1px solid #eaecf0;
+    }
+
+    .item:last-child {
+      border-bottom: 0;
+    }
+
+    .item-name {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .item-details {
+      margin-top: 4px;
+
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .item-barcode {
+      margin-top: 5px;
+
+      color: #98a2b3;
+      font-size: 11px;
+    }
+
+    .unknown {
+      color: #b42318;
+    }
+
+    .quantity {
       display: flex;
+
+      align-items: center;
+
       gap: 8px;
     }
 
-    .manual input {
-      flex: 1;
-      min-width: 0;
+    .quantity button {
+      width: 36px;
+      height: 36px;
 
-      padding: 12px;
+      padding: 0;
 
-      border: 1px solid #dbe3ec;
-      border-radius: 10px;
+      border-radius: 50%;
 
-      font-size: 17px;
+      font-size: 20px;
     }
 
-    .manual button {
-      width: auto;
+    .quantity-value {
+      min-width: 25px;
 
-      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
 
-      padding-left: 18px;
-      padding-right: 18px;
+      text-align: center;
+    }
+
+    .finish {
+      margin-top: 18px;
+    }
+
+    .cancel {
+      margin-top: 10px;
+
+      background: transparent;
+      color: #667085;
+
+      border: 1px solid #d0d5dd;
+    }
+
+    .message {
+      display: none;
+
+      margin-bottom: 16px;
+      padding: 13px;
+
+      border-radius: 12px;
+
+      font-size: 14px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.error {
+      border: 1px solid #fda29b;
+
+      background: #fef3f2;
+      color: #b42318;
+    }
+
+    .message.success {
+      border: 1px solid #6ce9a6;
+
+      background: #ecfdf3;
+      color: #027a48;
+    }
+
+    .message.info {
+      border: 1px solid #84caff;
+
+      background: #eff8ff;
+      color: #175cd3;
+    }
+
+    .success-screen {
+      text-align: center;
+    }
+
+    .success-icon {
+      margin-bottom: 12px;
+
+      font-size: 55px;
+    }
+
+    .success-screen h2 {
+      margin: 0 0 8px;
+    }
+
+    .success-details {
+      margin-bottom: 20px;
+
+      color: #667085;
+
+      line-height: 1.6;
     }
   </style>
 </head>
+
 
 <body>
 
@@ -294,30 +442,159 @@
 
     <header class="header">
 
-      <h1>S124 Filament Scanner</h1>
+      <h1>S124 Filament Management</h1>
 
       <p>
-        Scan the EAN barcode on a filament box
+        Filament inventory scanner
       </p>
 
     </header>
 
 
-    <section class="card">
+    <div
+      id="globalMessage"
+      class="message"
+    ></div>
+
+
+    <!-- LOGIN -->
+
+    <section
+      id="loginScreen"
+      class="card"
+    >
+
+      <label for="operatorName">
+        Name
+      </label>
+
+      <input
+        id="operatorName"
+        type="text"
+        autocomplete="name"
+        placeholder="Enter your name"
+      >
+
+
+      <label for="operatorPin">
+        PIN
+      </label>
+
+      <input
+        id="operatorPin"
+        type="password"
+        inputmode="numeric"
+        placeholder="Enter PIN"
+      >
+
 
       <button
-        id="startButton"
         type="button"
-        onclick="startScanner()"
+        onclick="continueLogin()"
       >
-        📷 Scan Barcode
+        Continue
       </button>
 
+    </section>
 
-      <div
-        id="cameraWrap"
-        class="camera-wrap"
+
+    <!-- ACTION SELECTION -->
+
+    <section
+      id="actionScreen"
+      class="card hidden"
+    >
+
+      <div class="session-header">
+
+        <div>
+
+          <div class="session-title">
+            Select Action
+          </div>
+
+          <div
+            id="loggedInName"
+            class="session-operator"
+          ></div>
+
+        </div>
+
+      </div>
+
+
+      <div class="action-grid">
+
+        <button
+          class="action-button"
+          type="button"
+          onclick="startSession('IN')"
+        >
+          <span>📥</span>
+          Scan In
+        </button>
+
+
+        <button
+          class="action-button secondary"
+          type="button"
+          onclick="startSession('OUT')"
+        >
+          <span>📤</span>
+          Scan Out
+        </button>
+
+      </div>
+
+
+      <button
+        class="cancel"
+        type="button"
+        onclick="logout()"
       >
+        Change Operator
+      </button>
+
+    </section>
+
+
+    <!-- SCANNER -->
+
+    <section
+      id="scannerScreen"
+      class="card hidden"
+    >
+
+      <div class="session-header">
+
+        <div>
+
+          <div
+            id="sessionTitle"
+            class="session-title"
+          >
+            Scan In
+          </div>
+
+          <div
+            id="sessionOperator"
+            class="session-operator"
+          ></div>
+
+        </div>
+
+
+        <div
+          id="rollCount"
+          class="count-badge"
+        >
+          0 rolls
+        </div>
+
+      </div>
+
+
+      <div class="camera-wrap">
 
         <video
           id="video"
@@ -332,92 +609,82 @@
       </div>
 
 
-      <button
-        id="stopButton"
-        class="secondary"
-        type="button"
-        onclick="stopScanner()"
-        style="display:none;"
+      <div
+        id="scannerStatus"
+        class="status"
       >
-        Stop Camera
+        Starting camera...
+      </div>
+
+
+      <div
+        id="lastScan"
+        class="last-scan"
+      ></div>
+
+
+      <div
+        id="sessionList"
+        class="session-list"
+      >
+
+        <div class="empty">
+          Scan your first filament roll
+        </div>
+
+      </div>
+
+
+      <button
+        id="finishButton"
+        class="finish"
+        type="button"
+        onclick="finishSession()"
+        disabled
+      >
+        Finish Session
       </button>
 
 
-      <div
-        id="status"
-        class="status"
+      <button
+        class="cancel"
+        type="button"
+        onclick="cancelSession()"
       >
-        Camera not started
+        Cancel Session
+      </button>
+
+    </section>
+
+
+    <!-- SUCCESS -->
+
+    <section
+      id="successScreen"
+      class="card success-screen hidden"
+    >
+
+      <div class="success-icon">
+        ✓
       </div>
 
+      <h2>
+        Session Complete
+      </h2>
+
 
       <div
-        id="cameraInfo"
-        class="camera-info"
+        id="successDetails"
+        class="success-details"
       ></div>
 
 
-      <div
-        id="error"
-        class="error"
-      ></div>
-
-
-      <div
-        id="result"
-        class="result"
+      <button
+        type="button"
+        onclick="newSession()"
       >
-
-        <div class="result-label">
-          Barcode Detected
-        </div>
-
-        <div
-          id="barcode"
-          class="barcode"
-        ></div>
-
-        <div
-          id="format"
-          class="format"
-        ></div>
-
-        <button
-          type="button"
-          onclick="scanAgain()"
-        >
-          Scan Another
-        </button>
-
-      </div>
-
-
-      <div class="manual">
-
-        <label for="manualBarcode">
-          Manual barcode
-        </label>
-
-        <div class="manual-row">
-
-          <input
-            id="manualBarcode"
-            type="text"
-            inputmode="numeric"
-            maxlength="13"
-            placeholder="6975337031345"
-          >
-
-          <button
-            type="button"
-            onclick="manualEntry()"
-          >
-            Enter
-          </button>
-
-        </div>
-
-      </div>
+        New Session
+      </button>
 
     </section>
 
@@ -426,172 +693,248 @@
 
   <script>
 
+    const API_URL =
+      "https://script.google.com/macros/s/AKfycbxHVBl6Qr3w2u4F8ScHDhxnSMVImeRcZoldOAJ2Txc004kEExYCoROUgk1MbUzerQL9Qw/exec";
+
+
+    let operatorName = "";
+    let operatorPin = "";
+
+    let sessionAction = "";
+
     let codeReader = null;
-    let controls = null;
+    let scannerControls = null;
+
     let scanning = false;
-    let detected = false;
+
+    let sessionItems = {};
+
+    let lastBarcode = "";
+    let lastBarcodeTime = 0;
+
+    const SAME_BARCODE_COOLDOWN =
+      1200;
+
+
+    function continueLogin() {
+
+      clearMessage();
+
+
+      const name =
+        document
+          .getElementById(
+            "operatorName"
+          )
+          .value
+          .trim();
+
+
+      const pin =
+        document
+          .getElementById(
+            "operatorPin"
+          )
+          .value
+          .trim();
+
+
+      if (!name) {
+
+        showMessage(
+          "Enter your name.",
+          "error"
+        );
+
+        return;
+
+      }
+
+
+      if (!pin) {
+
+        showMessage(
+          "Enter the filament management PIN.",
+          "error"
+        );
+
+        return;
+
+      }
+
+
+      operatorName =
+        name;
+
+      operatorPin =
+        pin;
+
+
+      document
+        .getElementById(
+          "loggedInName"
+        )
+        .textContent =
+          operatorName;
+
+
+      showScreen(
+        "actionScreen"
+      );
+
+    }
+
+
+
+    async function startSession(
+      action
+    ) {
+
+      clearMessage();
+
+
+      sessionAction =
+        action;
+
+
+      sessionItems =
+        {};
+
+
+      lastBarcode =
+        "";
+
+      lastBarcodeTime =
+        0;
+
+
+      document
+        .getElementById(
+          "sessionTitle"
+        )
+        .textContent =
+          action === "IN"
+            ? "📥 Scan In"
+            : "📤 Scan Out";
+
+
+      document
+        .getElementById(
+          "sessionOperator"
+        )
+        .textContent =
+          operatorName;
+
+
+      showScreen(
+        "scannerScreen"
+      );
+
+
+      renderSession();
+
+
+      await startScanner();
+
+    }
+
 
 
     async function startScanner() {
 
-      hideError();
-      hideResult();
-
-      detected = false;
-
-
-      document
-        .getElementById("startButton")
-        .style.display =
-          "none";
-
-
-      document
-        .getElementById("stopButton")
-        .style.display =
-          "block";
-
-
-      document
-        .getElementById("cameraWrap")
-        .classList.add(
-          "show"
-        );
-
-
-      document
-        .getElementById("status")
-        .textContent =
-          "Starting rear camera...";
-
-
       try {
 
-        codeReader =
-          new ZXingBrowser.BrowserMultiFormatReader();
-
-
-        scanning = true;
-
-
-        controls =
-          await codeReader.decodeFromConstraints(
-
-            {
-              audio: false,
-
-              video: {
-
-                facingMode: {
-                  ideal: "environment"
-                },
-
-                width: {
-                  ideal: 1920
-                },
-
-                height: {
-                  ideal: 1080
-                }
-
-              }
-            },
-
-            document.getElementById(
-              "video"
-            ),
-
-            function(
-              result,
-              error,
-              controls
-            ) {
-
-              if (
-                result &&
-                scanning &&
-                !detected
-              ) {
-
-                const text =
-                  String(
-                    result.getText()
-                  ).trim();
-
-
-                /*
-                 * For now we only accept
-                 * 13 digit EAN values.
-                 */
-
-                if (
-                  /^\d{13}$/.test(
-                    text
-                  )
-                ) {
-
-                  barcodeDetected(
-                    text,
-                    result
-                  );
-
-                }
-
-              }
-
-            }
-
-          );
+        scanning =
+          true;
 
 
         document
-          .getElementById("status")
+          .getElementById(
+            "scannerStatus"
+          )
           .textContent =
-            "Point the barcode inside the box";
+            "Starting rear camera...";
+
+
+        codeReader =
+          new ZXingBrowser
+            .BrowserMultiFormatReader();
+
+
+        scannerControls =
+          await codeReader
+            .decodeFromConstraints(
+
+              {
+                audio: false,
+
+                video: {
+
+                  facingMode: {
+                    ideal:
+                      "environment"
+                  },
+
+                  width: {
+                    ideal:
+                      1920
+                  },
+
+                  height: {
+                    ideal:
+                      1080
+                  }
+
+                }
+              },
+
+              document
+                .getElementById(
+                  "video"
+                ),
+
+              handleScannerResult
+
+            );
+
+
+        document
+          .getElementById(
+            "scannerStatus"
+          )
+          .textContent =
+            "Scan filament barcodes";
 
 
         setTimeout(
           configureCamera,
-          600
+          500
         );
 
 
       } catch (error) {
 
-        console.error(error);
+        console.error(
+          error
+        );
 
 
-        scanning = false;
-
-
-        document
-          .getElementById("startButton")
-          .style.display =
-            "block";
+        scanning =
+          false;
 
 
         document
-          .getElementById("stopButton")
-          .style.display =
-            "none";
-
-
-        document
-          .getElementById("cameraWrap")
-          .classList.remove(
-            "show"
-          );
-
-
-        document
-          .getElementById("status")
+          .getElementById(
+            "scannerStatus"
+          )
           .textContent =
-            "Camera unavailable";
+            "Unable to start camera";
 
 
-        showError(
-          "Unable to open camera: " +
-          String(error)
+        showMessage(
+          "Camera error: " +
+          String(error),
+          "error"
         );
 
       }
@@ -599,160 +942,718 @@
     }
 
 
-    async function configureCamera() {
+
+    function handleScannerResult(
+      result,
+      error,
+      controls
+    ) {
+
+      if (
+        !result ||
+        !scanning
+      ) {
+
+        return;
+
+      }
+
+
+      const barcode =
+        String(
+          result.getText()
+        )
+          .trim();
+
+
+      if (
+        !/^\d{13}$/.test(
+          barcode
+        )
+      ) {
+
+        return;
+
+      }
+
+
+      const now =
+        Date.now();
+
+
+      if (
+        barcode ===
+          lastBarcode &&
+        now -
+          lastBarcodeTime <
+          SAME_BARCODE_COOLDOWN
+      ) {
+
+        return;
+
+      }
+
+
+      lastBarcode =
+        barcode;
+
+      lastBarcodeTime =
+        now;
+
+
+      processScan(
+        barcode
+      );
+
+    }
+
+
+
+    async function processScan(
+      barcode
+    ) {
+
+      /*
+       * Existing barcode in this session.
+       *
+       * No need to call the server again.
+       */
+
+      if (
+        sessionItems[
+          barcode
+        ]
+      ) {
+
+        sessionItems[
+          barcode
+        ].quantity++;
+
+
+        showLastScan(
+          sessionItems[
+            barcode
+          ].colour +
+          " ×" +
+          sessionItems[
+            barcode
+          ].quantity
+        );
+
+
+        renderSession();
+
+        return;
+
+      }
+
+
+      /*
+       * Temporarily add the item
+       * while catalogue lookup runs.
+       */
+
+      sessionItems[
+        barcode
+      ] = {
+
+        barcode:
+          barcode,
+
+        quantity:
+          1,
+
+        loading:
+          true,
+
+        found:
+          false,
+
+        brand:
+          "",
+
+        material:
+          "",
+
+        colour:
+          "Looking up...",
+
+        packageType:
+          "",
+
+        weight:
+          ""
+
+      };
+
+
+      renderSession();
+
 
       try {
 
-        const video =
-          document.getElementById(
-            "video"
+        const result =
+          await lookupBarcode(
+            barcode
           );
 
 
         if (
-          !video.srcObject
+          result &&
+          result.success &&
+          result.found &&
+          result.product
         ) {
 
-          return;
-
-        }
-
-
-        const tracks =
-          video
-            .srcObject
-            .getVideoTracks();
+          const product =
+            result.product;
 
 
-        if (
-          !tracks.length
-        ) {
+          sessionItems[
+            barcode
+          ] = {
 
-          return;
+            barcode:
+              barcode,
 
-        }
+            quantity:
+              sessionItems[
+                barcode
+              ].quantity,
+
+            loading:
+              false,
+
+            found:
+              true,
+
+            brand:
+              product.brand ||
+              "",
+
+            material:
+              product.material ||
+              "",
+
+            colour:
+              product.colour ||
+              "",
+
+            colourCode:
+              product.colourCode ||
+              "",
+
+            packageType:
+              product.packageType ||
+              "",
+
+            weight:
+              product.weight ||
+              ""
+
+          };
 
 
-        const track =
-          tracks[0];
-
-
-        const settings =
-          track.getSettings();
-
-
-        document
-          .getElementById(
-            "cameraInfo"
-          )
-          .textContent =
-            settings.width &&
-            settings.height
-              ? (
-                  settings.width +
-                  " × " +
-                  settings.height
-                )
-              : "";
-
-
-        /*
-         * Ask the phone for continuous
-         * autofocus if supported.
-         */
-
-        if (
-          typeof track.getCapabilities ===
-          "function"
-        ) {
-
-          const capabilities =
-            track.getCapabilities();
-
-
-          if (
-            capabilities.focusMode &&
-            capabilities.focusMode.includes(
-              "continuous"
+          showLastScan(
+            (
+              product.material ||
+              ""
+            ) +
+            " · " +
+            (
+              product.colour ||
+              barcode
             )
-          ) {
+          );
+
+
+        } else {
+
+          sessionItems[
+            barcode
+          ].loading =
+            false;
+
+
+          sessionItems[
+            barcode
+          ].found =
+            false;
+
+
+          sessionItems[
+            barcode
+          ].colour =
+            "Unknown Filament";
+
+
+          showMessage(
+            "Unknown barcode: " +
+            barcode,
+            "error"
+          );
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        sessionItems[
+          barcode
+        ].loading =
+          false;
+
+
+        sessionItems[
+          barcode
+        ].found =
+          false;
+
+
+        sessionItems[
+          barcode
+        ].colour =
+          "Lookup Failed";
+
+
+        showMessage(
+          "Unable to look up " +
+          barcode +
+          ".",
+          "error"
+        );
+
+      }
+
+
+      renderSession();
+
+    }
+
+
+
+    function lookupBarcode(
+      barcode
+    ) {
+
+      return new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          const callbackName =
+            "filamentCallback_" +
+            Date.now() +
+            "_" +
+            Math.floor(
+              Math.random() *
+              100000
+            );
+
+
+          const script =
+            document
+              .createElement(
+                "script"
+              );
+
+
+          const timeout =
+            setTimeout(
+              () => {
+
+                cleanup();
+
+                reject(
+                  new Error(
+                    "Catalogue lookup timed out."
+                  )
+                );
+
+              },
+              10000
+            );
+
+
+          function cleanup() {
+
+            clearTimeout(
+              timeout
+            );
+
+
+            if (
+              script.parentNode
+            ) {
+
+              script.parentNode
+                .removeChild(
+                  script
+                );
+
+            }
+
 
             try {
 
-              await track
-                .applyConstraints({
-
-                  advanced: [
-                    {
-                      focusMode:
-                        "continuous"
-                    }
-                  ]
-
-                });
+              delete window[
+                callbackName
+              ];
 
             } catch (error) {
 
-              console.log(
-                "Autofocus not available",
-                error
-              );
+              window[
+                callbackName
+              ] =
+                undefined;
 
             }
 
           }
 
+
+          window[
+            callbackName
+          ] =
+            function(
+              response
+            ) {
+
+              cleanup();
+
+              resolve(
+                response
+              );
+
+            };
+
+
+          script.onerror =
+            function() {
+
+              cleanup();
+
+              reject(
+                new Error(
+                  "Catalogue request failed."
+                )
+              );
+
+            };
+
+
+          script.src =
+            API_URL +
+            "?action=lookup" +
+            "&barcode=" +
+            encodeURIComponent(
+              barcode
+            ) +
+            "&prefix=" +
+            encodeURIComponent(
+              callbackName
+            );
+
+
+          document
+            .body
+            .appendChild(
+              script
+            );
+
         }
-
-
-      } catch (error) {
-
-        console.log(
-          "Camera configuration:",
-          error
-        );
-
-      }
+      );
 
     }
 
 
-    async function barcodeDetected(
+
+    function renderSession() {
+
+      const list =
+        document
+          .getElementById(
+            "sessionList"
+          );
+
+
+      const items =
+        Object.values(
+          sessionItems
+        );
+
+
+      const total =
+        items.reduce(
+          (
+            sum,
+            item
+          ) =>
+            sum +
+            item.quantity,
+          0
+        );
+
+
+      document
+        .getElementById(
+          "rollCount"
+        )
+        .textContent =
+          total +
+          (
+            total === 1
+              ? " roll"
+              : " rolls"
+          );
+
+
+      if (
+        items.length ===
+        0
+      ) {
+
+        list.innerHTML =
+          '<div class="empty">' +
+          'Scan your first filament roll' +
+          '</div>';
+
+
+        document
+          .getElementById(
+            "finishButton"
+          )
+          .disabled =
+            true;
+
+
+        return;
+
+      }
+
+
+      let hasProblem =
+        false;
+
+
+      list.innerHTML =
+        items
+          .map(
+            item => {
+
+              if (
+                item.loading ||
+                !item.found
+              ) {
+
+                hasProblem =
+                  true;
+
+              }
+
+
+              const nameClass =
+                item.found
+                  ? "item-name"
+                  : "item-name unknown";
+
+
+              let details =
+                "";
+
+
+              if (
+                item.loading
+              ) {
+
+                details =
+                  "Checking catalogue...";
+
+              } else if (
+                item.found
+              ) {
+
+                details =
+                  [
+                    item.material,
+                    item.packageType,
+                    item.weight
+                  ]
+                    .filter(
+                      Boolean
+                    )
+                    .join(
+                      " · "
+                    );
+
+              } else {
+
+                details =
+                  "Not found in Filament Catalogue";
+
+              }
+
+
+              return `
+                <div class="item">
+
+                  <div>
+
+                    <div class="${nameClass}">
+                      ${escapeHtml(
+                        item.colour
+                      )}
+                    </div>
+
+                    <div class="item-details">
+                      ${escapeHtml(
+                        details
+                      )}
+                    </div>
+
+                    <div class="item-barcode">
+                      ${escapeHtml(
+                        item.barcode
+                      )}
+                    </div>
+
+                  </div>
+
+
+                  <div class="quantity">
+
+                    <button
+                      type="button"
+                      class="secondary"
+                      onclick="changeQuantity(
+                        '${item.barcode}',
+                        -1
+                      )"
+                    >
+                      −
+                    </button>
+
+                    <div class="quantity-value">
+                      ${item.quantity}
+                    </div>
+
+                    <button
+                      type="button"
+                      onclick="changeQuantity(
+                        '${item.barcode}',
+                        1
+                      )"
+                    >
+                      +
+                    </button>
+
+                  </div>
+
+                </div>
+              `;
+
+            }
+          )
+          .join(
+            ""
+          );
+
+
+      document
+        .getElementById(
+          "finishButton"
+        )
+        .disabled =
+          hasProblem;
+
+    }
+
+
+
+    function changeQuantity(
       barcode,
-      result
+      change
     ) {
 
-      if (detected) {
+      const item =
+        sessionItems[
+          barcode
+        ];
+
+
+      if (!item) {
         return;
       }
 
 
-      detected = true;
-      scanning = false;
+      item.quantity +=
+        change;
 
 
-      let format =
-        "EAN-13";
+      if (
+        item.quantity <=
+        0
+      ) {
+
+        delete sessionItems[
+          barcode
+        ];
+
+      }
 
 
-      try {
+      renderSession();
 
-        if (
-          result &&
-          result.getBarcodeFormat
-        ) {
+    }
 
-          format =
-            String(
-              result.getBarcodeFormat()
-            );
 
-        }
 
-      } catch (error) {
+    async function finishSession() {
 
-        format =
-          "EAN-13";
+      clearMessage();
+
+
+      const items =
+        Object.values(
+          sessionItems
+        );
+
+
+      if (
+        items.length ===
+        0
+      ) {
+
+        showMessage(
+          "No filament has been scanned.",
+          "error"
+        );
+
+        return;
+
+      }
+
+
+      if (
+        items.some(
+          item =>
+            !item.found ||
+            item.loading
+        )
+      ) {
+
+        showMessage(
+          "Resolve unknown filament before finishing.",
+          "error"
+        );
+
+        return;
 
       }
 
@@ -760,41 +1661,251 @@
       stopScanner();
 
 
-      showBarcode(
-        barcode,
-        format
-      );
+      const button =
+        document
+          .getElementById(
+            "finishButton"
+          );
+
+
+      button.disabled =
+        true;
+
+
+      button.textContent =
+        "Submitting...";
+
+
+      const payload = {
+
+        operator:
+          operatorName,
+
+        pin:
+          operatorPin,
+
+        action:
+          sessionAction,
+
+        items:
+          items.map(
+            item => ({
+              barcode:
+                item.barcode,
+
+              quantity:
+                item.quantity
+            })
+          )
+
+      };
+
+
+      try {
+
+        /*
+         * Apps Script web apps can be awkward
+         * with browser CORS POST requests.
+         *
+         * Sending as form data avoids a JSON
+         * preflight request.
+         */
+
+        const form =
+          new URLSearchParams();
+
+
+        form.append(
+          "payload",
+          JSON.stringify(
+            payload
+          )
+        );
+
+
+        const response =
+          await fetch(
+            API_URL,
+            {
+              method:
+                "POST",
+
+              body:
+                form
+            }
+          );
+
+
+        const result =
+          await response.json();
+
+
+        if (
+          !result.success
+        ) {
+
+          throw new Error(
+            result.error ||
+            "Session failed."
+          );
+
+        }
+
+
+        document
+          .getElementById(
+            "successDetails"
+          )
+          .innerHTML =
+            "<strong>" +
+            escapeHtml(
+              sessionAction ===
+                "IN"
+                ? "Scan In"
+                : "Scan Out"
+            ) +
+            "</strong><br>" +
+            escapeHtml(
+              String(
+                result.totalRolls
+              )
+            ) +
+            " rolls · " +
+            escapeHtml(
+              String(
+                result.uniqueItems
+              )
+            ) +
+            " filament types<br>" +
+            "Session " +
+            escapeHtml(
+              result.sessionId
+            );
+
+
+        showScreen(
+          "successScreen"
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        showMessage(
+          String(
+            error.message ||
+            error
+          ),
+          "error"
+        );
+
+
+        button.disabled =
+          false;
+
+
+        button.textContent =
+          "Finish Session";
+
+
+        /*
+         * Restart camera because the
+         * submission failed.
+         */
+
+        await startScanner();
+
+      }
 
     }
 
 
+
+    function showLastScan(
+      text
+    ) {
+
+      const element =
+        document
+          .getElementById(
+            "lastScan"
+          );
+
+
+      element.textContent =
+        "✓ " +
+        text;
+
+
+      element
+        .classList
+        .add(
+          "show"
+        );
+
+
+      clearTimeout(
+        showLastScan.timer
+      );
+
+
+      showLastScan.timer =
+        setTimeout(
+          () => {
+
+            element
+              .classList
+              .remove(
+                "show"
+              );
+
+          },
+          1200
+        );
+
+    }
+
+
+
     function stopScanner() {
 
-      scanning = false;
+      scanning =
+        false;
 
 
-      if (controls) {
+      if (
+        scannerControls
+      ) {
 
         try {
 
-          controls.stop();
+          scannerControls
+            .stop();
 
         } catch (error) {
 
-          console.log(error);
+          console.log(
+            error
+          );
 
         }
 
       }
 
 
-      controls = null;
+      scannerControls =
+        null;
 
 
       const video =
-        document.getElementById(
-          "video"
-        );
+        document
+          .getElementById(
+            "video"
+          );
 
 
       if (
@@ -815,166 +1926,222 @@
 
       }
 
-
-      document
-        .getElementById("cameraWrap")
-        .classList.remove(
-          "show"
-        );
-
-
-      document
-        .getElementById("stopButton")
-        .style.display =
-          "none";
-
-
-      document
-        .getElementById("startButton")
-        .style.display =
-          "block";
-
-
-      document
-        .getElementById("cameraInfo")
-        .textContent =
-          "";
-
-
-      if (!detected) {
-
-        document
-          .getElementById("status")
-          .textContent =
-            "Camera stopped";
-
-      }
-
     }
 
 
-    function showBarcode(
-      barcode,
-      format
-    ) {
 
-      document
-        .getElementById("barcode")
-        .textContent =
-          barcode;
-
-
-      document
-        .getElementById("format")
-        .textContent =
-          format;
-
-
-      document
-        .getElementById("result")
-        .classList.add(
-          "show"
-        );
-
-
-      document
-        .getElementById("status")
-        .textContent =
-          "Scan complete";
-
-    }
-
-
-    function scanAgain() {
-
-      hideResult();
-
-      startScanner();
-
-    }
-
-
-    function manualEntry() {
-
-      hideError();
-
-
-      const barcode =
-        document
-          .getElementById(
-            "manualBarcode"
-          )
-          .value
-          .trim();
-
+    function cancelSession() {
 
       if (
-        !/^\d{13}$/.test(
-          barcode
-        )
+        Object.keys(
+          sessionItems
+        ).length >
+        0
       ) {
 
-        showError(
-          "Enter a valid 13-digit EAN barcode."
-        );
+        const confirmed =
+          confirm(
+            "Discard this scan session?"
+          );
 
-        return;
+
+        if (
+          !confirmed
+        ) {
+
+          return;
+
+        }
 
       }
-
-
-      detected = true;
 
 
       stopScanner();
 
 
-      showBarcode(
-        barcode,
-        "EAN-13 (Manual)"
+      sessionItems =
+        {};
+
+
+      showScreen(
+        "actionScreen"
       );
 
     }
 
 
-    function hideResult() {
+
+    function newSession() {
+
+      sessionItems =
+        {};
+
+
+      sessionAction =
+        "";
+
 
       document
-        .getElementById("result")
-        .classList.remove(
-          "show"
+        .getElementById(
+          "finishButton"
+        )
+        .textContent =
+          "Finish Session";
+
+
+      showScreen(
+        "actionScreen"
+      );
+
+    }
+
+
+
+    function logout() {
+
+      stopScanner();
+
+
+      operatorName =
+        "";
+
+      operatorPin =
+        "";
+
+
+      document
+        .getElementById(
+          "operatorName"
+        )
+        .value =
+          "";
+
+
+      document
+        .getElementById(
+          "operatorPin"
+        )
+        .value =
+          "";
+
+
+      showScreen(
+        "loginScreen"
+      );
+
+    }
+
+
+
+    function showScreen(
+      screenId
+    ) {
+
+      [
+        "loginScreen",
+        "actionScreen",
+        "scannerScreen",
+        "successScreen"
+      ]
+        .forEach(
+          id => {
+
+            document
+              .getElementById(
+                id
+              )
+              .classList
+              .add(
+                "hidden"
+              );
+
+          }
+        );
+
+
+      document
+        .getElementById(
+          screenId
+        )
+        .classList
+        .remove(
+          "hidden"
         );
 
     }
 
 
-    function showError(
-      message
+
+    function showMessage(
+      text,
+      type
     ) {
 
       const element =
-        document.getElementById(
-          "error"
-        );
+        document
+          .getElementById(
+            "globalMessage"
+          );
 
 
       element.textContent =
-        message;
+        text;
 
 
-      element.classList.add(
-        "show"
-      );
+      element.className =
+        "message show " +
+        type;
 
     }
 
 
-    function hideError() {
 
-      document
-        .getElementById("error")
-        .classList.remove(
-          "show"
+    function clearMessage() {
+
+      const element =
+        document
+          .getElementById(
+            "globalMessage"
+          );
+
+
+      element.textContent =
+        "";
+
+
+      element.className =
+        "message";
+
+    }
+
+
+
+    function escapeHtml(
+      value
+    ) {
+
+      return String(
+        value ?? ""
+      )
+        .replace(
+          /&/g,
+          "&amp;"
+        )
+        .replace(
+          /</g,
+          "&lt;"
+        )
+        .replace(
+          />/g,
+          "&gt;"
+        )
+        .replace(
+          /"/g,
+          "&quot;"
+        )
+        .replace(
+          /'/g,
+          "&#039;"
         );
 
     }
