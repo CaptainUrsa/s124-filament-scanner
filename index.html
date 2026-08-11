@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
 
@@ -11,7 +10,8 @@
 
   <title>S124 Filament Scanner</title>
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- ZXing Browser -->
+  <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 
   <style>
     * {
@@ -23,10 +23,7 @@
       min-height: 100vh;
       padding: 18px;
 
-      font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
 
       background: #f4f7fb;
       color: #1f2937;
@@ -68,18 +65,82 @@
         rgba(31, 41, 55, 0.08);
     }
 
-    #reader {
+    .camera-wrap {
+      position: relative;
+
+      display: none;
+
       width: 100%;
       overflow: hidden;
+
       border-radius: 16px;
+
       background: #111827;
+    }
+
+    .camera-wrap.show {
+      display: block;
+    }
+
+    video {
+      display: block;
+
+      width: 100%;
+      min-height: 260px;
+      max-height: 420px;
+
+      object-fit: cover;
+
+      background: #111827;
+    }
+
+    .scan-guide {
+      position: absolute;
+
+      top: 50%;
+      left: 50%;
+
+      width: 88%;
+      height: 105px;
+
+      transform:
+        translate(-50%, -50%);
+
+      border:
+        3px solid
+        rgba(255, 255, 255, 0.95);
+
+      border-radius: 12px;
+
+      pointer-events: none;
+
+      box-shadow:
+        0 0 0 9999px
+        rgba(0, 0, 0, 0.15);
+    }
+
+    .scan-line {
+      position: absolute;
+
+      top: 50%;
+      left: 8%;
+
+      width: 84%;
+      height: 2px;
+
+      background: #ef4444;
+
+      transform:
+        translateY(-50%);
+
+      pointer-events: none;
     }
 
     button {
       width: 100%;
 
       margin-top: 14px;
-      padding: 14px;
+      padding: 15px;
 
       border: 0;
       border-radius: 12px;
@@ -111,7 +172,7 @@
     }
 
     .camera-info {
-      margin-top: 8px;
+      margin-top: 7px;
 
       color: #98a2b3;
       font-size: 12px;
@@ -151,7 +212,7 @@
 
       color: #12314d;
 
-      font-size: 26px;
+      font-size: 27px;
       font-weight: 800;
 
       word-break: break-all;
@@ -227,7 +288,6 @@
   </style>
 </head>
 
-
 <body>
 
   <main class="app">
@@ -254,7 +314,33 @@
       </button>
 
 
-      <div id="reader"></div>
+      <div
+        id="cameraWrap"
+        class="camera-wrap"
+      >
+
+        <video
+          id="video"
+          playsinline
+          muted
+        ></video>
+
+        <div class="scan-guide"></div>
+
+        <div class="scan-line"></div>
+
+      </div>
+
+
+      <button
+        id="stopButton"
+        class="secondary"
+        type="button"
+        onclick="stopScanner()"
+        style="display:none;"
+      >
+        Stop Camera
+      </button>
 
 
       <div
@@ -269,17 +355,6 @@
         id="cameraInfo"
         class="camera-info"
       ></div>
-
-
-      <button
-        id="zoomButton"
-        class="secondary"
-        type="button"
-        onclick="toggleZoom()"
-        style="display:none;"
-      >
-        Zoom
-      </button>
 
 
       <div
@@ -305,9 +380,7 @@
         <div
           id="format"
           class="format"
-        >
-          EAN-13
-        </div>
+        ></div>
 
         <button
           type="button"
@@ -353,21 +426,18 @@
 
   <script>
 
-    let scanner = null;
-    let scannerRunning = false;
-
-    let activeTrack = null;
-
-    let zoomSupported = false;
-    let zoomMin = 1;
-    let zoomMax = 1;
-    let zoomCurrent = 1;
+    let codeReader = null;
+    let controls = null;
+    let scanning = false;
+    let detected = false;
 
 
     async function startScanner() {
 
       hideError();
       hideResult();
+
+      detected = false;
 
 
       document
@@ -377,9 +447,16 @@
 
 
       document
-        .getElementById("zoomButton")
+        .getElementById("stopButton")
         .style.display =
-          "none";
+          "block";
+
+
+      document
+        .getElementById("cameraWrap")
+        .classList.add(
+          "show"
+        );
 
 
       document
@@ -388,137 +465,95 @@
           "Starting rear camera...";
 
 
-      document
-        .getElementById("cameraInfo")
-        .textContent =
-          "";
-
-
       try {
 
-        scanner =
-          new Html5Qrcode(
-            "reader",
+        codeReader =
+          new ZXingBrowser.BrowserMultiFormatReader();
+
+
+        scanning = true;
+
+
+        controls =
+          await codeReader.decodeFromConstraints(
+
             {
-              formatsToSupport: [
-                Html5QrcodeSupportedFormats.EAN_13
-              ],
+              audio: false,
 
-              verbose: false
-            }
-          );
+              video: {
 
+                facingMode: {
+                  ideal: "environment"
+                },
 
-        /*
-         * html5-qrcode requires cameraIdOrConfig
-         * to contain only one camera selector.
-         *
-         * Resolution is handled separately below.
-         */
-        const cameraConfig = {
+                width: {
+                  ideal: 1920
+                },
 
-          facingMode:
-            "environment"
+                height: {
+                  ideal: 1080
+                }
 
-        };
-
-
-        const scanConfig = {
-
-          fps: 15,
-
-          qrbox: function(
-            width,
-            height
-          ) {
-
-            let boxWidth =
-              Math.floor(
-                width * 0.90
-              );
-
-
-            let boxHeight =
-              Math.floor(
-                boxWidth * 0.32
-              );
-
-
-            if (
-              boxHeight >
-              height * 0.60
-            ) {
-
-              boxHeight =
-                Math.floor(
-                  height * 0.60
-                );
-
-            }
-
-
-            return {
-
-              width:
-                boxWidth,
-
-              height:
-                boxHeight
-
-            };
-
-          },
-
-
-          videoConstraints: {
-
-            facingMode:
-              "environment",
-
-            width: {
-              ideal: 1920
+              }
             },
 
-            height: {
-              ideal: 1080
+            document.getElementById(
+              "video"
+            ),
+
+            function(
+              result,
+              error,
+              controls
+            ) {
+
+              if (
+                result &&
+                scanning &&
+                !detected
+              ) {
+
+                const text =
+                  String(
+                    result.getText()
+                  ).trim();
+
+
+                /*
+                 * For now we only accept
+                 * 13 digit EAN values.
+                 */
+
+                if (
+                  /^\d{13}$/.test(
+                    text
+                  )
+                ) {
+
+                  barcodeDetected(
+                    text,
+                    result
+                  );
+
+                }
+
+              }
+
             }
 
-          }
-
-        };
-
-
-        await scanner.start(
-
-          cameraConfig,
-
-          scanConfig,
-
-          barcodeDetected,
-
-          function() {
-
-            /*
-             * Failed frames are normal.
-             * Scanner keeps trying.
-             */
-
-          }
-
-        );
-
-
-        scannerRunning =
-          true;
+          );
 
 
         document
           .getElementById("status")
           .textContent =
-            "Point the camera at the EAN barcode";
+            "Point the barcode inside the box";
 
 
-        await configureCamera();
+        setTimeout(
+          configureCamera,
+          600
+        );
 
 
       } catch (error) {
@@ -526,14 +561,26 @@
         console.error(error);
 
 
-        scannerRunning =
-          false;
+        scanning = false;
 
 
         document
           .getElementById("startButton")
           .style.display =
             "block";
+
+
+        document
+          .getElementById("stopButton")
+          .style.display =
+            "none";
+
+
+        document
+          .getElementById("cameraWrap")
+          .classList.remove(
+            "show"
+          );
 
 
         document
@@ -557,13 +604,12 @@
       try {
 
         const video =
-          document.querySelector(
-            "#reader video"
+          document.getElementById(
+            "video"
           );
 
 
         if (
-          !video ||
           !video.srcObject
         ) {
 
@@ -579,8 +625,7 @@
 
 
         if (
-          !tracks ||
-          tracks.length === 0
+          !tracks.length
         ) {
 
           return;
@@ -588,233 +633,82 @@
         }
 
 
-        activeTrack =
+        const track =
           tracks[0];
 
 
         const settings =
-          activeTrack
-            .getSettings();
+          track.getSettings();
 
 
-        let capabilities =
-          {};
+        document
+          .getElementById(
+            "cameraInfo"
+          )
+          .textContent =
+            settings.width &&
+            settings.height
+              ? (
+                  settings.width +
+                  " × " +
+                  settings.height
+                )
+              : "";
 
+
+        /*
+         * Ask the phone for continuous
+         * autofocus if supported.
+         */
 
         if (
-          typeof activeTrack
-            .getCapabilities ===
+          typeof track.getCapabilities ===
           "function"
         ) {
 
-          capabilities =
-            activeTrack
-              .getCapabilities();
-
-        }
+          const capabilities =
+            track.getCapabilities();
 
 
-        /*
-         * Show actual camera resolution.
-         */
-
-        if (
-          settings.width &&
-          settings.height
-        ) {
-
-          document
-            .getElementById(
-              "cameraInfo"
+          if (
+            capabilities.focusMode &&
+            capabilities.focusMode.includes(
+              "continuous"
             )
-            .textContent =
-              settings.width +
-              " × " +
-              settings.height;
+          ) {
 
-        }
+            try {
 
+              await track
+                .applyConstraints({
 
-        /*
-         * Try continuous autofocus.
-         */
+                  advanced: [
+                    {
+                      focusMode:
+                        "continuous"
+                    }
+                  ]
 
-        if (
-          capabilities.focusMode &&
-          capabilities.focusMode.includes(
-            "continuous"
-          )
-        ) {
+                });
 
-          try {
+            } catch (error) {
 
-            await activeTrack
-              .applyConstraints({
+              console.log(
+                "Autofocus not available",
+                error
+              );
 
-                advanced: [
-
-                  {
-                    focusMode:
-                      "continuous"
-                  }
-
-                ]
-
-              });
-
-
-            console.log(
-              "Continuous autofocus enabled."
-            );
-
-
-          } catch (error) {
-
-            console.log(
-              "Unable to enable continuous autofocus:",
-              error
-            );
+            }
 
           }
 
         }
 
 
-        /*
-         * Check whether browser exposes zoom.
-         */
-
-        if (
-          capabilities.zoom &&
-          typeof capabilities.zoom.min ===
-            "number" &&
-          typeof capabilities.zoom.max ===
-            "number"
-        ) {
-
-          zoomSupported =
-            true;
-
-
-          zoomMin =
-            capabilities.zoom.min;
-
-
-          zoomMax =
-            capabilities.zoom.max;
-
-
-          zoomCurrent =
-            zoomMin;
-
-
-          const zoomButton =
-            document.getElementById(
-              "zoomButton"
-            );
-
-
-          zoomButton.style.display =
-            "block";
-
-
-          zoomButton.textContent =
-            "Zoom: Off";
-
-        } else {
-
-          zoomSupported =
-            false;
-
-        }
-
-
       } catch (error) {
 
         console.log(
-          "Camera configuration error:",
-          error
-        );
-
-      }
-
-    }
-
-
-    async function toggleZoom() {
-
-      if (
-        !zoomSupported ||
-        !activeTrack
-      ) {
-
-        return;
-
-      }
-
-
-      /*
-       * Toggle between minimum zoom
-       * and approximately 2x.
-       */
-
-      if (
-        zoomCurrent >
-        zoomMin
-      ) {
-
-        zoomCurrent =
-          zoomMin;
-
-      } else {
-
-        zoomCurrent =
-          Math.max(
-            zoomMin,
-            Math.min(
-              2,
-              zoomMax
-            )
-          );
-
-      }
-
-
-      try {
-
-        await activeTrack
-          .applyConstraints({
-
-            advanced: [
-
-              {
-                zoom:
-                  zoomCurrent
-              }
-
-            ]
-
-          });
-
-
-        document
-          .getElementById(
-            "zoomButton"
-          )
-          .textContent =
-            zoomCurrent > zoomMin
-              ? (
-                  "Zoom: " +
-                  zoomCurrent.toFixed(1) +
-                  "×"
-                )
-              : "Zoom: Off";
-
-
-      } catch (error) {
-
-        console.log(
-          "Zoom unavailable:",
+          "Camera configuration:",
           error
         );
 
@@ -824,93 +718,137 @@
 
 
     async function barcodeDetected(
-      decodedText
+      barcode,
+      result
     ) {
 
-      if (
-        !scannerRunning
-      ) {
-
+      if (detected) {
         return;
-
       }
 
 
-      const barcode =
-        String(
-          decodedText || ""
-        )
-          .trim();
+      detected = true;
+      scanning = false;
 
 
-      /*
-       * Only accept 13 digit EAN values.
-       */
-
-      if (
-        !/^\d{13}$/.test(
-          barcode
-        )
-      ) {
-
-        return;
-
-      }
-
-
-      scannerRunning =
-        false;
+      let format =
+        "EAN-13";
 
 
       try {
 
-        await scanner.stop();
+        if (
+          result &&
+          result.getBarcodeFormat
+        ) {
+
+          format =
+            String(
+              result.getBarcodeFormat()
+            );
+
+        }
 
       } catch (error) {
 
-        console.log(error);
+        format =
+          "EAN-13";
 
       }
 
 
-      activeTrack =
-        null;
+      stopScanner();
+
+
+      showBarcode(
+        barcode,
+        format
+      );
+
+    }
+
+
+    function stopScanner() {
+
+      scanning = false;
+
+
+      if (controls) {
+
+        try {
+
+          controls.stop();
+
+        } catch (error) {
+
+          console.log(error);
+
+        }
+
+      }
+
+
+      controls = null;
+
+
+      const video =
+        document.getElementById(
+          "video"
+        );
+
+
+      if (
+        video.srcObject
+      ) {
+
+        video
+          .srcObject
+          .getTracks()
+          .forEach(
+            track =>
+              track.stop()
+          );
+
+
+        video.srcObject =
+          null;
+
+      }
 
 
       document
-        .getElementById("reader")
-        .innerHTML =
-          "";
+        .getElementById("cameraWrap")
+        .classList.remove(
+          "show"
+        );
 
 
       document
-        .getElementById(
-          "zoomButton"
-        )
+        .getElementById("stopButton")
         .style.display =
           "none";
 
 
       document
-        .getElementById(
-          "status"
-        )
-        .textContent =
-          "Scan complete";
+        .getElementById("startButton")
+        .style.display =
+          "block";
 
 
       document
-        .getElementById(
-          "cameraInfo"
-        )
+        .getElementById("cameraInfo")
         .textContent =
           "";
 
 
-      showBarcode(
-        barcode,
-        "EAN-13"
-      );
+      if (!detected) {
+
+        document
+          .getElementById("status")
+          .textContent =
+            "Camera stopped";
+
+      }
 
     }
 
@@ -921,54 +859,37 @@
     ) {
 
       document
-        .getElementById(
-          "barcode"
-        )
+        .getElementById("barcode")
         .textContent =
           barcode;
 
 
       document
-        .getElementById(
-          "format"
-        )
+        .getElementById("format")
         .textContent =
           format;
 
 
       document
-        .getElementById(
-          "result"
-        )
+        .getElementById("result")
         .classList.add(
           "show"
         );
 
+
+      document
+        .getElementById("status")
+        .textContent =
+          "Scan complete";
+
     }
 
 
-    async function scanAgain() {
+    function scanAgain() {
 
       hideResult();
 
-
-      document
-        .getElementById(
-          "reader"
-        )
-        .innerHTML =
-          "";
-
-
-      document
-        .getElementById(
-          "status"
-        )
-        .textContent =
-          "Ready to scan";
-
-
-      await startScanner();
+      startScanner();
 
     }
 
@@ -1002,6 +923,12 @@
       }
 
 
+      detected = true;
+
+
+      stopScanner();
+
+
       showBarcode(
         barcode,
         "EAN-13 (Manual)"
@@ -1013,9 +940,7 @@
     function hideResult() {
 
       document
-        .getElementById(
-          "result"
-        )
+        .getElementById("result")
         .classList.remove(
           "show"
         );
@@ -1027,21 +952,19 @@
       message
     ) {
 
-      const error =
-        document
-          .getElementById(
-            "error"
-          );
+      const element =
+        document.getElementById(
+          "error"
+        );
 
 
-      error.textContent =
+      element.textContent =
         message;
 
 
-      error
-        .classList.add(
-          "show"
-        );
+      element.classList.add(
+        "show"
+      );
 
     }
 
@@ -1049,9 +972,7 @@
     function hideError() {
 
       document
-        .getElementById(
-          "error"
-        )
+        .getElementById("error")
         .classList.remove(
           "show"
         );
@@ -1061,5 +982,4 @@
   </script>
 
 </body>
-
 </html>
