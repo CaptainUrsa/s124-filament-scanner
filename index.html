@@ -1,2274 +1,588 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>S124 Filament Management</title>
-
   <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
-
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      padding: 18px;
-
-      font-family: Arial, Helvetica, sans-serif;
-
-      background: #f4f7fb;
-      color: #1f2937;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 520px;
-      margin: 0 auto;
-    }
-
-    .header {
-      margin-bottom: 20px;
-      text-align: center;
-    }
-
-    .header h1 {
-      margin: 0;
-
-      color: #004681;
-      font-size: 28px;
-    }
-
-    .header p {
-      margin: 8px 0 0;
-
-      color: #667085;
-      font-size: 15px;
-    }
-
-    .card {
-      margin-bottom: 16px;
-      padding: 18px;
-
-      border: 1px solid #dbe3ec;
-      border-radius: 20px;
-
-      background: white;
-
-      box-shadow:
-        0 10px 28px
-        rgba(31, 41, 55, 0.08);
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    label {
-      display: block;
-
-      margin-bottom: 7px;
-
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    input {
-      width: 100%;
-
-      margin-bottom: 16px;
-      padding: 13px;
-
-      border: 1px solid #d0d5dd;
-      border-radius: 10px;
-
-      font-size: 16px;
-    }
-
-    input:focus {
-      outline: 2px solid #84caff;
-      border-color: #1570ef;
-    }
-
-    button {
-      width: 100%;
-
-      padding: 14px;
-
-      border: 0;
-      border-radius: 12px;
-
-      background: #005bac;
-      color: white;
-
-      font-size: 16px;
-      font-weight: 700;
-
-      cursor: pointer;
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.5;
-    }
-
-    button:active {
-      transform: scale(0.99);
-    }
-
-    .secondary {
-      background: #475467;
-    }
-
-    .danger {
-      background: #b42318;
-    }
-
-    .action-grid {
-      display: grid;
-
-      grid-template-columns:
-        1fr 1fr;
-
-      gap: 12px;
-    }
-
-    .action-button {
-      min-height: 105px;
-
-      font-size: 18px;
-    }
-
-    .action-button span {
-      display: block;
-
-      margin-bottom: 8px;
-
-      font-size: 30px;
-    }
-
-    .session-header {
-      display: flex;
-
-      align-items: center;
-      justify-content: space-between;
-
-      margin-bottom: 14px;
-    }
-
-    .session-title {
-      font-size: 22px;
-      font-weight: 800;
-    }
-
-    .session-operator {
-      margin-top: 4px;
-
-      color: #667085;
-      font-size: 13px;
-    }
-
-    .count-badge {
-      padding: 8px 12px;
-
-      border-radius: 999px;
-
-      background: #eaf2fb;
-      color: #005bac;
-
-      font-size: 14px;
-      font-weight: 800;
-    }
-
-    .camera-wrap {
-      position: relative;
-
-      width: 100%;
-      overflow: hidden;
-
-      border-radius: 16px;
-
-      background: #111827;
-    }
-
-    video {
-      display: block;
-
-      width: 100%;
-      height: 300px;
-
-      object-fit: cover;
-
-      background: #111827;
-    }
-
-    .scan-guide {
-      position: absolute;
-
-      top: 50%;
-      left: 50%;
-
-      width: 88%;
-      height: 100px;
-
-      transform:
-        translate(-50%, -50%);
-
-      border:
-        3px solid
-        rgba(255, 255, 255, 0.95);
-
-      border-radius: 12px;
-
-      pointer-events: none;
-
-      box-shadow:
-        0 0 0 9999px
-        rgba(0, 0, 0, 0.15);
-    }
-
-    .scan-line {
-      position: absolute;
-
-      top: 50%;
-      left: 8%;
-
-      width: 84%;
-      height: 2px;
-
-      transform:
-        translateY(-50%);
-
-      background: #ef4444;
-
-      pointer-events: none;
-    }
-
-    .status {
-      margin-top: 10px;
-
-      color: #667085;
-      font-size: 13px;
-
-      text-align: center;
-    }
-
-    .last-scan {
-      display: none;
-
-      margin-top: 12px;
-      padding: 12px;
-
-      border-radius: 12px;
-
-      background: #ecfdf3;
-      color: #027a48;
-
-      font-size: 14px;
-      font-weight: 700;
-
-      text-align: center;
-    }
-
-    .last-scan.show {
-      display: block;
-    }
-
-    .session-list {
-      margin-top: 18px;
-    }
-
-    .empty {
-      padding: 24px 10px;
-
-      color: #98a2b3;
-
-      text-align: center;
-    }
-
-    .item {
-      display: grid;
-
-      grid-template-columns:
-        1fr auto;
-
-      gap: 12px;
-
-      padding: 14px 0;
-
-      border-bottom: 1px solid #eaecf0;
-    }
-
-    .item:last-child {
-      border-bottom: 0;
-    }
-
-    .item-name {
-      font-size: 16px;
-      font-weight: 800;
-    }
-
-    .item-details {
-      margin-top: 4px;
-
-      color: #667085;
-      font-size: 13px;
-    }
-
-    .item-barcode {
-      margin-top: 5px;
-
-      color: #98a2b3;
-      font-size: 11px;
-    }
-
-    .unknown {
-      color: #b42318;
-    }
-
-    .quantity {
-      display: flex;
-
-      align-items: center;
-
-      gap: 8px;
-    }
-
-    .quantity button {
-      width: 36px;
-      height: 36px;
-
-      padding: 0;
-
-      border-radius: 50%;
-
-      font-size: 20px;
-    }
-
-    .quantity-value {
-      min-width: 25px;
-
-      font-size: 18px;
-      font-weight: 800;
-
-      text-align: center;
-    }
-
-    .finish {
-      margin-top: 18px;
-    }
-
-    .cancel {
-      margin-top: 10px;
-
-      background: transparent;
-      color: #667085;
-
-      border: 1px solid #d0d5dd;
-    }
-
-    .message {
-      display: none;
-
-      margin-bottom: 16px;
-      padding: 13px;
-
-      border-radius: 12px;
-
-      font-size: 14px;
-    }
-
-    .message.show {
-      display: block;
-    }
-
-    .message.error {
-      border: 1px solid #fda29b;
-
-      background: #fef3f2;
-      color: #b42318;
-    }
-
-    .message.success {
-      border: 1px solid #6ce9a6;
-
-      background: #ecfdf3;
-      color: #027a48;
-    }
-
-    .message.info {
-      border: 1px solid #84caff;
-
-      background: #eff8ff;
-      color: #175cd3;
-    }
-
-    .success-screen {
-      text-align: center;
-    }
-
-    .success-icon {
-      margin-bottom: 12px;
-
-      font-size: 55px;
-    }
-
-    .success-screen h2 {
-      margin: 0 0 8px;
-    }
-
-    .success-details {
-      margin-bottom: 20px;
-
-      color: #667085;
-
-      line-height: 1.6;
-    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;padding:18px;font-family:Arial,Helvetica,sans-serif;background:#f4f7fb;color:#1f2937}
+    .app{width:100%;max-width:520px;margin:0 auto}
+    .header{text-align:center;margin-bottom:20px}
+    .header h1{margin:0;color:#004681;font-size:28px}
+    .header p{margin:8px 0 0;color:#667085}
+    .card{margin-bottom:16px;padding:18px;border:1px solid #dbe3ec;border-radius:20px;background:#fff;box-shadow:0 10px 28px rgba(31,41,55,.08)}
+    .hidden{display:none!important}
+    label{display:block;margin-bottom:7px;font-size:14px;font-weight:700}
+    input{width:100%;margin-bottom:16px;padding:13px;border:1px solid #d0d5dd;border-radius:10px;font-size:16px}
+    button{width:100%;padding:14px;border:0;border-radius:12px;background:#005bac;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .secondary{background:#475467}
+    .cancel{margin-top:10px;background:transparent;color:#667085;border:1px solid #d0d5dd}
+    .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .action-button{min-height:105px;font-size:18px}.action-button span{display:block;margin-bottom:8px;font-size:30px}
+    .session-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .session-title{font-size:22px;font-weight:800}.session-operator{margin-top:4px;color:#667085;font-size:13px}
+    .count-badge{padding:8px 12px;border-radius:999px;background:#eaf2fb;color:#005bac;font-weight:800}
+    .camera-wrap{position:relative;width:100%;overflow:hidden;border-radius:16px;background:#111827}
+    video{display:block;width:100%;height:300px;object-fit:cover;background:#111827}
+    .scan-guide{position:absolute;top:50%;left:50%;width:88%;height:100px;transform:translate(-50%,-50%);border:3px solid rgba(255,255,255,.95);border-radius:12px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.15)}
+    .scan-line{position:absolute;top:50%;left:8%;width:84%;height:2px;transform:translateY(-50%);background:#ef4444;pointer-events:none}
+    .status{margin-top:10px;color:#667085;font-size:13px;text-align:center}
+    .last-scan{display:none;margin-top:12px;padding:12px;border-radius:12px;background:#ecfdf3;color:#027a48;font-weight:700;text-align:center}.last-scan.show{display:block}
+    .session-list{margin-top:18px}.empty{padding:24px 10px;color:#98a2b3;text-align:center}
+    .item{display:grid;grid-template-columns:1fr auto;gap:12px;padding:14px 0;border-bottom:1px solid #eaecf0}
+    .item-name{font-weight:800}.item-details{margin-top:4px;color:#667085;font-size:13px}.item-barcode{margin-top:5px;color:#98a2b3;font-size:11px}.unknown{color:#b42318}
+    .quantity{display:flex;align-items:center;gap:8px}.quantity button{width:36px;height:36px;padding:0;border-radius:50%;font-size:20px}.quantity-value{min-width:25px;font-size:18px;font-weight:800;text-align:center}
+    .finish{margin-top:18px}
+    .message{display:none;margin-bottom:16px;padding:13px;border-radius:12px;font-size:14px}.message.show{display:block}.message.error{border:1px solid #fda29b;background:#fef3f2;color:#b42318}.message.info{border:1px solid #84caff;background:#eff8ff;color:#175cd3}
+    .success-screen{text-align:center}.success-icon{margin-bottom:12px;font-size:55px}.success-details{margin-bottom:20px;color:#667085;line-height:1.6}
   </style>
 </head>
-
-
 <body>
-
-  <main class="app">
-
-    <header class="header">
-
-      <h1>S124 Filament Management</h1>
-
-      <p>
-        Filament inventory scanner
-      </p>
-
-    </header>
-
-
-    <div
-      id="globalMessage"
-      class="message"
-    ></div>
-
-
-    <!-- LOGIN -->
-
-    <section
-      id="loginScreen"
-      class="card"
-    >
-
-      <label for="operatorName">
-        Name
-      </label>
-
-      <input
-        id="operatorName"
-        type="text"
-        autocomplete="name"
-        placeholder="Enter your name"
-      >
-
-
-      <label for="operatorPin">
-        PIN
-      </label>
-
-      <input
-        id="operatorPin"
-        type="password"
-        inputmode="numeric"
-        placeholder="Enter PIN"
-      >
-
-
-      <button
-        type="button"
-        onclick="continueLogin()"
-      >
-        Continue
-      </button>
-
-    </section>
-
-
-    <!-- ACTION SELECTION -->
-
-    <section
-      id="actionScreen"
-      class="card hidden"
-    >
-
-      <div class="session-header">
-
-        <div>
-
-          <div class="session-title">
-            Select Action
-          </div>
-
-          <div
-            id="loggedInName"
-            class="session-operator"
-          ></div>
-
-        </div>
-
-      </div>
-
-
-      <div class="action-grid">
-
-        <button
-          class="action-button"
-          type="button"
-          onclick="startSession('IN')"
-        >
-          <span>📥</span>
-          Scan In
-        </button>
-
-
-        <button
-          class="action-button secondary"
-          type="button"
-          onclick="startSession('OUT')"
-        >
-          <span>📤</span>
-          Scan Out
-        </button>
-
-      </div>
-
-
-      <button
-        class="cancel"
-        type="button"
-        onclick="logout()"
-      >
-        Change Operator
-      </button>
-
-    </section>
-
-
-    <!-- SCANNER -->
-
-    <section
-      id="scannerScreen"
-      class="card hidden"
-    >
-
-      <div class="session-header">
-
-        <div>
-
-          <div
-            id="sessionTitle"
-            class="session-title"
-          >
-            Scan In
-          </div>
-
-          <div
-            id="sessionOperator"
-            class="session-operator"
-          ></div>
-
-        </div>
-
-
-        <div
-          id="rollCount"
-          class="count-badge"
-        >
-          0 rolls
-        </div>
-
-      </div>
-
-
-      <div class="camera-wrap">
-
-        <video
-          id="video"
-          playsinline
-          muted
-        ></video>
-
-        <div class="scan-guide"></div>
-
-        <div class="scan-line"></div>
-
-      </div>
-
-
-      <div
-        id="scannerStatus"
-        class="status"
-      >
-        Starting camera...
-      </div>
-
-
-      <div
-        id="lastScan"
-        class="last-scan"
-      ></div>
-
-
-      <div
-        id="sessionList"
-        class="session-list"
-      >
-
-        <div class="empty">
-          Scan your first filament roll
-        </div>
-
-      </div>
-
-
-      <button
-        id="finishButton"
-        class="finish"
-        type="button"
-        onclick="finishSession()"
-        disabled
-      >
-        Finish Session
-      </button>
-
-
-      <button
-        class="cancel"
-        type="button"
-        onclick="cancelSession()"
-      >
-        Cancel Session
-      </button>
-
-    </section>
-
-
-    <!-- SUCCESS -->
-
-    <section
-      id="successScreen"
-      class="card success-screen hidden"
-    >
-
-      <div class="success-icon">
-        ✓
-      </div>
-
-      <h2>
-        Session Complete
-      </h2>
-
-
-      <div
-        id="successDetails"
-        class="success-details"
-      ></div>
-
-
-      <button
-        type="button"
-        onclick="newSession()"
-      >
-        New Session
-      </button>
-
-    </section>
-
-  </main>
-
-
-  <script>
-
-    const API_URL =
-      "https://script.google.com/macros/s/AKfycbxHVBl6Qr3w2u4F8ScHDhxnSMVImeRcZoldOAJ2Txc004kEExYCoROUgk1MbUzerQL9Qw/exec";
-
-
-    let operatorName = "";
-    let operatorPin = "";
-
-    let sessionAction = "";
-
-    let codeReader = null;
-    let scannerControls = null;
-
-    let scanning = false;
-
-    let sessionItems = {};
-
-    let lastBarcode = "";
-    let lastBarcodeTime = 0;
-
-    const SAME_BARCODE_COOLDOWN =
-      2000;
-
-
-    function continueLogin() {
-
-      clearMessage();
-
-
-      const name =
-        document
-          .getElementById(
-            "operatorName"
-          )
-          .value
-          .trim();
-
-
-      const pin =
-        document
-          .getElementById(
-            "operatorPin"
-          )
-          .value
-          .trim();
-
-
-      if (!name) {
-
-        showMessage(
-          "Enter your name.",
-          "error"
-        );
-
-        return;
-
-      }
-
-
-      if (!pin) {
-
-        showMessage(
-          "Enter the filament management PIN.",
-          "error"
-        );
-
-        return;
-
-      }
-
-
-      operatorName =
-        name;
-
-      operatorPin =
-        pin;
-
-
-      document
-        .getElementById(
-          "loggedInName"
-        )
-        .textContent =
-          operatorName;
-
-
-      showScreen(
-        "actionScreen"
-      );
-
+<main class="app">
+  <header class="header"><h1>S124 Filament Management</h1><p>Filament inventory scanner</p></header>
+  <div id="globalMessage" class="message"></div>
+
+  <section id="loginScreen" class="card">
+    <label for="operatorName">Name</label>
+    <input id="operatorName" type="text" autocomplete="name" placeholder="Enter your name">
+    <label for="operatorPin">PIN</label>
+    <input id="operatorPin" type="password" inputmode="numeric" placeholder="Enter PIN">
+    <button id="continueButton" type="button">Continue</button>
+  </section>
+
+  <section id="actionScreen" class="card hidden">
+    <div class="session-header"><div><div class="session-title">Select Action</div><div id="loggedInName" class="session-operator"></div></div></div>
+    <div class="action-grid">
+      <button id="scanInButton" class="action-button" type="button"><span>📥</span>Scan In</button>
+      <button id="scanOutButton" class="action-button secondary" type="button"><span>📤</span>Scan Out</button>
+    </div>
+    <button id="changeOperatorButton" class="cancel" type="button">Change Operator</button>
+  </section>
+
+  <section id="scannerScreen" class="card hidden">
+    <div class="session-header">
+      <div><div id="sessionTitle" class="session-title">Scan In</div><div id="sessionOperator" class="session-operator"></div></div>
+      <div id="rollCount" class="count-badge">0 rolls</div>
+    </div>
+    <div class="camera-wrap"><video id="video" playsinline muted></video><div class="scan-guide"></div><div class="scan-line"></div></div>
+    <div id="scannerStatus" class="status">Starting camera...</div>
+    <div id="lastScan" class="last-scan"></div>
+    <div id="sessionList" class="session-list"><div class="empty">Scan your first filament roll</div></div>
+    <button id="finishButton" class="finish" type="button" disabled>Finish Session</button>
+    <button id="cancelSessionButton" class="cancel" type="button">Cancel Session</button>
+  </section>
+
+  <section id="successScreen" class="card success-screen hidden">
+    <div class="success-icon">✓</div><h2>Session Complete</h2>
+    <div id="successDetails" class="success-details"></div>
+    <button id="newSessionButton" type="button">New Session</button>
+  </section>
+</main>
+
+<script>
+const API_URL="https://script.google.com/macros/s/AKfycbxHVBl6Qr3w2u4F8ScHDhxnSMVImeRcZoldOAJ2Txc004kEExYCoROUgk1MbUzerQL9Qw/exec";
+const SAME_BARCODE_COOLDOWN=2500;
+
+let operatorName="",operatorPin="",sessionAction="";
+let codeReader=null,scannerControls=null,scanning=false;
+let sessionItems={},lastBarcode="",lastBarcodeTime=0;
+
+const $=id=>document.getElementById(id);
+
+$("continueButton").addEventListener("click",continueLogin);
+$("scanInButton").addEventListener("click",()=>startSession("IN"));
+$("scanOutButton").addEventListener("click",()=>startSession("OUT"));
+$("changeOperatorButton").addEventListener("click",logout);
+$("finishButton").addEventListener("click",finishSession);
+$("cancelSessionButton").addEventListener("click",cancelSession);
+$("newSessionButton").addEventListener("click",newSession);
+$("operatorPin").addEventListener("keydown",e=>{if(e.key==="Enter")continueLogin()});
+
+async function continueLogin(){
+  clearMessage();
+  const name=$("operatorName").value.trim();
+  const pin=$("operatorPin").value.trim();
+
+  if(!name){showMessage("Enter your name.","error");return}
+  if(!pin){showMessage("Enter the filament management PIN.","error");return}
+
+  const button=$("continueButton");
+  button.disabled=true;
+  button.textContent="Checking PIN...";
+
+  try{
+    const pinHash=await sha256Hex(pin);
+    const result=await jsonpRequest(
+      API_URL+"?action=validatePin&pinHash="+encodeURIComponent(pinHash)
+    );
+
+    if(!result||result.success!==true){
+      throw new Error(result?.error||"Unable to validate PIN.");
     }
 
-    async function configureCamera() {
-      try {
-    
-        const video =
-          document.getElementById(
-            "video"
-          );
-    
-        if (
-          !video ||
-          !video.srcObject
-        ) {
-          return;
+    if(result.valid!==true){
+      $("operatorPin").value="";
+      showMessage("Incorrect PIN.","error");
+      return;
+    }
+
+    operatorName=name;
+    operatorPin=pin;
+    $("loggedInName").textContent=operatorName;
+    showScreen("actionScreen");
+  }catch(error){
+    console.error(error);
+    showMessage(
+      "Unable to validate PIN: "+String(error.message||error),
+      "error"
+    );
+  }finally{
+    button.disabled=false;
+    button.textContent="Continue";
+  }
+}
+
+async function sha256Hex(value){
+  const data=new TextEncoder().encode(value);
+  const digest=await crypto.subtle.digest("SHA-256",data);
+  return Array.from(new Uint8Array(digest))
+    .map(b=>b.toString(16).padStart(2,"0"))
+    .join("");
+}
+
+async function startSession(action){
+  clearMessage();
+  sessionAction=action;
+  sessionItems={};
+  lastBarcode="";
+  lastBarcodeTime=0;
+
+  $("sessionTitle").textContent=action==="IN"?"📥 Scan In":"📤 Scan Out";
+  $("sessionOperator").textContent=operatorName;
+  showScreen("scannerScreen");
+  renderSession();
+  await startScanner();
+}
+
+async function startScanner(){
+  try{
+    scanning=true;
+    $("scannerStatus").textContent="Starting rear camera...";
+    codeReader=new ZXingBrowser.BrowserMultiFormatReader();
+
+    scannerControls=await codeReader.decodeFromConstraints(
+      {
+        audio:false,
+        video:{
+          facingMode:{ideal:"environment"},
+          width:{ideal:1920},
+          height:{ideal:1080}
         }
-    
-        const tracks =
-          video.srcObject
-            .getVideoTracks();
-    
-        if (
-          !tracks ||
-          tracks.length === 0
-        ) {
-          return;
+      },
+      $("video"),
+      handleScannerResult
+    );
+
+    $("scannerStatus").textContent="Scan filament barcodes";
+    setTimeout(configureCamera,500);
+  }catch(error){
+    console.error(error);
+    scanning=false;
+    $("scannerStatus").textContent="Unable to start camera";
+    showMessage("Camera error: "+String(error),"error");
+  }
+}
+
+async function configureCamera(){
+  try{
+    const video=$("video");
+    if(!video?.srcObject)return;
+    const tracks=video.srcObject.getVideoTracks();
+    if(!tracks?.length)return;
+    const track=tracks[0];
+
+    if(typeof track.getCapabilities==="function"){
+      const caps=track.getCapabilities();
+
+      if(caps.focusMode?.includes("continuous")){
+        try{
+          await track.applyConstraints({
+            advanced:[{focusMode:"continuous"}]
+          });
+        }catch(error){
+          console.log("Continuous autofocus unavailable:",error);
         }
-    
-        const track =
-          tracks[0];
-    
-        if (
-          typeof track.getCapabilities ===
-          "function"
-        ) {
-    
-          const capabilities =
-            track.getCapabilities();
-    
-          if (
-            capabilities.focusMode &&
-            capabilities.focusMode.includes(
-              "continuous"
-            )
-          ) {
-    
-            try {
-    
-              await track.applyConstraints({
-                advanced: [
-                  {
-                    focusMode:
-                      "continuous"
-                  }
-                ]
-              });
-    
-            } catch (error) {
-    
-              console.log(
-                "Continuous autofocus unavailable:",
-                error
-              );
-    
-            }
-    
-          }
-    
-        }
-    
-      } catch (error) {
-    
-        console.log(
-          "Camera configuration error:",
-          error
-        );
-    
       }
     }
-
-    async function startSession(
-      action
-    ) {
-
-      clearMessage();
-
-
-      sessionAction =
-        action;
-
-
-      sessionItems =
-        {};
-
-
-      lastBarcode =
-        "";
-
-      lastBarcodeTime =
-        0;
-
-
-      document
-        .getElementById(
-          "sessionTitle"
-        )
-        .textContent =
-          action === "IN"
-            ? "📥 Scan In"
-            : "📤 Scan Out";
-
-
-      document
-        .getElementById(
-          "sessionOperator"
-        )
-        .textContent =
-          operatorName;
-
-
-      showScreen(
-        "scannerScreen"
-      );
-
-
-      renderSession();
-
-
-      await startScanner();
-
-    }
-
-
-
-    async function startScanner() {
-
-      try {
-
-        scanning =
-          true;
-
-
-        document
-          .getElementById(
-            "scannerStatus"
-          )
-          .textContent =
-            "Starting rear camera...";
-
-
-        codeReader =
-          new ZXingBrowser
-            .BrowserMultiFormatReader();
-
-
-        scannerControls =
-          await codeReader
-            .decodeFromConstraints(
-
-              {
-                audio: false,
-
-                video: {
-
-                  facingMode: {
-                    ideal:
-                      "environment"
-                  },
-
-                  width: {
-                    ideal:
-                      1920
-                  },
-
-                  height: {
-                    ideal:
-                      1080
-                  }
-
-                }
-              },
-
-              document
-                .getElementById(
-                  "video"
-                ),
-
-              handleScannerResult
-
-            );
-
-
-        document
-          .getElementById(
-            "scannerStatus"
-          )
-          .textContent =
-            "Scan filament barcodes";
-
-
-        setTimeout(
-          configureCamera,
-          500
-        );
-
-
-      } catch (error) {
-
-        console.error(
-          error
-        );
-
-
-        scanning =
-          false;
-
-
-        document
-          .getElementById(
-            "scannerStatus"
-          )
-          .textContent =
-            "Unable to start camera";
-
-
-        showMessage(
-          "Camera error: " +
-          String(error),
-          "error"
-        );
-
-      }
-
-    }
-
-    function playBeep() {
-      try {
-        const AudioContextClass =
-          window.AudioContext ||
-          window.webkitAudioContext;
-    
-        if (!AudioContextClass) {
-          return;
-        }
-    
-        const audioContext =
-          new AudioContextClass();
-    
-        const oscillator =
-          audioContext.createOscillator();
-    
-        const gain =
-          audioContext.createGain();
-    
-        oscillator.type = "square";
-        oscillator.frequency.value = 1200;
-    
-        gain.gain.setValueAtTime(
-          0.18,
-          audioContext.currentTime
-        );
-    
-        oscillator.connect(gain);
-        gain.connect(audioContext.destination);
-    
-        oscillator.start();
-    
-        oscillator.stop(
-          audioContext.currentTime + 0.25
-        );
-    
-        oscillator.onended = () => {
-          audioContext.close();
-        };
-    
-      } catch (error) {
-        console.log(
-          "Beep unavailable:",
-          error
-        );
-      }
-    }
-
-    function handleScannerResult(
-      result,
-      error,
-      controls
-    ) {
-
-      if (
-        !result ||
-        !scanning
-      ) {
-
-        return;
-
-      }
-
-
-      const barcode =
-        String(
-          result.getText()
-        )
-          .trim();
-
-
-      if (
-        !/^\d{13}$/.test(
-          barcode
-        )
-      ) {
-
-        return;
-
-      }
-
-
-      const now =
-        Date.now();
-
-
-      if (
-        barcode ===
-          lastBarcode &&
-        now -
-          lastBarcodeTime <
-          SAME_BARCODE_COOLDOWN
-      ) {
-
-        return;
-
-      }
-
-
-      lastBarcode =
-        barcode;
-
-      lastBarcodeTime =
-        now;
-
-
-      processScan(
-        barcode
-      );
-
-    }
-
-
-
-    async function processScan(
-      barcode
-    ) {
-      playBeep();
-      /*
-       * Existing barcode in this session.
-       *
-       * No need to call the server again.
-       */
-
-      if (
-        sessionItems[
-          barcode
-        ]
-      ) {
-
-        sessionItems[
-          barcode
-        ].quantity++;
-
-
-        showLastScan(
-          sessionItems[
-            barcode
-          ].colour +
-          " ×" +
-          sessionItems[
-            barcode
-          ].quantity
-        );
-
-
-        renderSession();
-
-        return;
-
-      }
-
-
-      /*
-       * Temporarily add the item
-       * while catalogue lookup runs.
-       */
-
-      sessionItems[
-        barcode
-      ] = {
-
-        barcode:
-          barcode,
-
-        quantity:
-          1,
-
-        loading:
-          true,
-
-        found:
-          false,
-
-        brand:
-          "",
-
-        material:
-          "",
-
-        colour:
-          "Looking up...",
-
-        packageType:
-          "",
-
-        weight:
-          ""
-
+  }catch(error){
+    console.log("Camera configuration error:",error);
+  }
+}
+
+function handleScannerResult(result){
+  if(!result||!scanning)return;
+
+  const barcode=String(result.getText()).trim();
+  if(!/^\d{13}$/.test(barcode))return;
+
+  const now=Date.now();
+
+  if(
+    barcode===lastBarcode&&
+    now-lastBarcodeTime<SAME_BARCODE_COOLDOWN
+  )return;
+
+  lastBarcode=barcode;
+  lastBarcodeTime=now;
+  processScan(barcode);
+}
+
+async function processScan(barcode){
+  playBeep();
+
+  if(sessionItems[barcode]){
+    sessionItems[barcode].quantity++;
+    showLastScan(
+      sessionItems[barcode].colour+
+      " ×"+
+      sessionItems[barcode].quantity
+    );
+    renderSession();
+    return;
+  }
+
+  sessionItems[barcode]={
+    barcode,
+    quantity:1,
+    loading:true,
+    found:false,
+    brand:"",
+    material:"",
+    colour:"Looking up...",
+    packageType:"",
+    weight:""
+  };
+
+  renderSession();
+
+  try{
+    const result=await lookupBarcode(barcode);
+
+    if(result?.success&&result.found&&result.product){
+      const p=result.product;
+
+      sessionItems[barcode]={
+        barcode,
+        quantity:sessionItems[barcode].quantity,
+        loading:false,
+        found:true,
+        brand:p.brand||"",
+        material:p.material||"",
+        colour:p.colour||"",
+        colourCode:p.colourCode||"",
+        packageType:p.packageType||"",
+        weight:p.weight||""
       };
 
-
-      renderSession();
-
-
-      try {
-
-        const result =
-          await lookupBarcode(
-            barcode
-          );
-
-
-        if (
-          result &&
-          result.success &&
-          result.found &&
-          result.product
-        ) {
-
-          const product =
-            result.product;
-
-
-          sessionItems[
-            barcode
-          ] = {
-
-            barcode:
-              barcode,
-
-            quantity:
-              sessionItems[
-                barcode
-              ].quantity,
-
-            loading:
-              false,
-
-            found:
-              true,
-
-            brand:
-              product.brand ||
-              "",
-
-            material:
-              product.material ||
-              "",
-
-            colour:
-              product.colour ||
-              "",
-
-            colourCode:
-              product.colourCode ||
-              "",
-
-            packageType:
-              product.packageType ||
-              "",
-
-            weight:
-              product.weight ||
-              ""
-
-          };
-
-
-          showLastScan(
-            (
-              product.material ||
-              ""
-            ) +
-            " · " +
-            (
-              product.colour ||
-              barcode
-            )
-          );
-
-
-        } else {
-
-          sessionItems[
-            barcode
-          ].loading =
-            false;
-
-
-          sessionItems[
-            barcode
-          ].found =
-            false;
-
-
-          sessionItems[
-            barcode
-          ].colour =
-            "Unknown Filament";
-
-
-          showMessage(
-            "Unknown barcode: " +
-            barcode,
-            "error"
-          );
-
-        }
-
-
-      } catch (error) {
-
-        console.error(
-          error
-        );
-
-
-        sessionItems[
-          barcode
-        ].loading =
-          false;
-
-
-        sessionItems[
-          barcode
-        ].found =
-          false;
-
-
-        sessionItems[
-          barcode
-        ].colour =
-          "Lookup Failed";
-
-
-        showMessage(
-          "Unable to look up " +
-          barcode +
-          ".",
-          "error"
-        );
-
-      }
-
-
-      renderSession();
-
-    }
-
-
-
-    function lookupBarcode(
-      barcode
-    ) {
-
-      return new Promise(
-        (
-          resolve,
-          reject
-        ) => {
-
-          const callbackName =
-            "filamentCallback_" +
-            Date.now() +
-            "_" +
-            Math.floor(
-              Math.random() *
-              100000
-            );
-
-
-          const script =
-            document
-              .createElement(
-                "script"
-              );
-
-
-          const timeout =
-            setTimeout(
-              () => {
-
-                cleanup();
-
-                reject(
-                  new Error(
-                    "Catalogue lookup timed out."
-                  )
-                );
-
-              },
-              10000
-            );
-
-
-          function cleanup() {
-
-            clearTimeout(
-              timeout
-            );
-
-
-            if (
-              script.parentNode
-            ) {
-
-              script.parentNode
-                .removeChild(
-                  script
-                );
-
-            }
-
-
-            try {
-
-              delete window[
-                callbackName
-              ];
-
-            } catch (error) {
-
-              window[
-                callbackName
-              ] =
-                undefined;
-
-            }
-
-          }
-
-
-          window[
-            callbackName
-          ] =
-            function(
-              response
-            ) {
-
-              cleanup();
-
-              resolve(
-                response
-              );
-
-            };
-
-
-          script.onerror =
-            function() {
-
-              cleanup();
-
-              reject(
-                new Error(
-                  "Catalogue request failed."
-                )
-              );
-
-            };
-
-
-          script.src =
-            API_URL +
-            "?action=lookup" +
-            "&barcode=" +
-            encodeURIComponent(
-              barcode
-            ) +
-            "&prefix=" +
-            encodeURIComponent(
-              callbackName
-            );
-
-
-          document
-            .body
-            .appendChild(
-              script
-            );
-
-        }
+      showLastScan(
+        (p.material||"")+" · "+(p.colour||barcode)
       );
+    }else{
+      sessionItems[barcode].loading=false;
+      sessionItems[barcode].found=false;
+      sessionItems[barcode].colour="Unknown Filament";
+      showMessage("Unknown barcode: "+barcode,"error");
+    }
+  }catch(error){
+    console.error(error);
+    sessionItems[barcode].loading=false;
+    sessionItems[barcode].found=false;
+    sessionItems[barcode].colour="Lookup Failed";
+    showMessage("Unable to look up "+barcode+".","error");
+  }
 
+  renderSession();
+}
+
+function playBeep(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    const ctx=new AC();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+
+    osc.type="square";
+    osc.frequency.value=1200;
+    gain.gain.setValueAtTime(.18,ctx.currentTime);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime+.25);
+    osc.onended=()=>ctx.close();
+  }catch(error){
+    console.log("Beep unavailable:",error);
+  }
+}
+
+function lookupBarcode(barcode){
+  return jsonpRequest(
+    API_URL+"?action=lookup&barcode="+encodeURIComponent(barcode)
+  );
+}
+
+function jsonpRequest(baseUrl){
+  return new Promise((resolve,reject)=>{
+    const callbackName=
+      "filamentCallback_"+Date.now()+"_"+Math.floor(Math.random()*100000);
+
+    const script=document.createElement("script");
+
+    const timeout=setTimeout(()=>{
+      cleanup();
+      reject(new Error("Request timed out."));
+    },10000);
+
+    function cleanup(){
+      clearTimeout(timeout);
+      if(script.parentNode)script.parentNode.removeChild(script);
+      try{delete window[callbackName]}catch{window[callbackName]=undefined}
     }
 
+    window[callbackName]=response=>{
+      cleanup();
+      resolve(response);
+    };
 
+    script.onerror=()=>{
+      cleanup();
+      reject(new Error("Request failed."));
+    };
 
-    function renderSession() {
+    script.src=
+      baseUrl+"&prefix="+encodeURIComponent(callbackName);
 
-      const list =
-        document
-          .getElementById(
-            "sessionList"
-          );
+    document.body.appendChild(script);
+  });
+}
 
+function renderSession(){
+  const list=$("sessionList");
+  const items=Object.values(sessionItems);
+  const total=items.reduce((sum,item)=>sum+item.quantity,0);
 
-      const items =
-        Object.values(
-          sessionItems
-        );
+  $("rollCount").textContent=
+    total+(total===1?" roll":" rolls");
 
+  if(!items.length){
+    list.innerHTML='<div class="empty">Scan your first filament roll</div>';
+    $("finishButton").disabled=true;
+    return;
+  }
 
-      const total =
-        items.reduce(
-          (
-            sum,
-            item
-          ) =>
-            sum +
-            item.quantity,
-          0
-        );
+  let hasProblem=false;
 
+  list.innerHTML=items.map(item=>{
+    if(item.loading||!item.found)hasProblem=true;
 
-      document
-        .getElementById(
-          "rollCount"
-        )
-        .textContent =
-          total +
-          (
-            total === 1
-              ? " roll"
-              : " rolls"
-          );
+    const nameClass=item.found?"item-name":"item-name unknown";
 
+    const details=item.loading
+      ?"Checking catalogue..."
+      :item.found
+        ?[item.material,item.packageType,item.weight].filter(Boolean).join(" · ")
+        :"Not found in Filament Catalogue";
 
-      if (
-        items.length ===
-        0
-      ) {
+    return `
+      <div class="item">
+        <div>
+          <div class="${nameClass}">${escapeHtml(item.colour)}</div>
+          <div class="item-details">${escapeHtml(details)}</div>
+          <div class="item-barcode">${escapeHtml(item.barcode)}</div>
+        </div>
+        <div class="quantity">
+          <button type="button" class="secondary qty-minus" data-barcode="${item.barcode}">−</button>
+          <div class="quantity-value">${item.quantity}</div>
+          <button type="button" class="qty-plus" data-barcode="${item.barcode}">+</button>
+        </div>
+      </div>`;
+  }).join("");
 
-        list.innerHTML =
-          '<div class="empty">' +
-          'Scan your first filament roll' +
-          '</div>';
+  list.querySelectorAll(".qty-minus").forEach(button=>{
+    button.addEventListener("click",()=>{
+      changeQuantity(button.dataset.barcode,-1);
+    });
+  });
 
+  list.querySelectorAll(".qty-plus").forEach(button=>{
+    button.addEventListener("click",()=>{
+      changeQuantity(button.dataset.barcode,1);
+    });
+  });
 
-        document
-          .getElementById(
-            "finishButton"
-          )
-          .disabled =
-            true;
+  $("finishButton").disabled=hasProblem;
+}
 
+function changeQuantity(barcode,change){
+  const item=sessionItems[barcode];
+  if(!item)return;
 
-        return;
+  item.quantity+=change;
 
-      }
+  if(item.quantity<=0){
+    delete sessionItems[barcode];
+  }
 
+  renderSession();
+}
 
-      let hasProblem =
-        false;
+async function finishSession(){
+  clearMessage();
+  const items=Object.values(sessionItems);
 
+  if(!items.length){
+    showMessage("No filament has been scanned.","error");
+    return;
+  }
 
-      list.innerHTML =
-        items
-          .map(
-            item => {
+  if(items.some(item=>!item.found||item.loading)){
+    showMessage("Resolve unknown filament before finishing.","error");
+    return;
+  }
 
-              if (
-                item.loading ||
-                !item.found
-              ) {
+  stopScanner();
 
-                hasProblem =
-                  true;
+  const button=$("finishButton");
+  button.disabled=true;
+  button.textContent="Submitting...";
 
-              }
+  const payload={
+    operator:operatorName,
+    pin:operatorPin,
+    action:sessionAction,
+    items:items.map(item=>({
+      barcode:item.barcode,
+      quantity:item.quantity
+    }))
+  };
 
+  try{
+    const form=new URLSearchParams();
+    form.append("payload",JSON.stringify(payload));
 
-              const nameClass =
-                item.found
-                  ? "item-name"
-                  : "item-name unknown";
+    const response=await fetch(API_URL,{
+      method:"POST",
+      body:form
+    });
 
+    const result=await response.json();
 
-              let details =
-                "";
-
-
-              if (
-                item.loading
-              ) {
-
-                details =
-                  "Checking catalogue...";
-
-              } else if (
-                item.found
-              ) {
-
-                details =
-                  [
-                    item.material,
-                    item.packageType,
-                    item.weight
-                  ]
-                    .filter(
-                      Boolean
-                    )
-                    .join(
-                      " · "
-                    );
-
-              } else {
-
-                details =
-                  "Not found in Filament Catalogue";
-
-              }
-
-
-              return `
-                <div class="item">
-
-                  <div>
-
-                    <div class="${nameClass}">
-                      ${escapeHtml(
-                        item.colour
-                      )}
-                    </div>
-
-                    <div class="item-details">
-                      ${escapeHtml(
-                        details
-                      )}
-                    </div>
-
-                    <div class="item-barcode">
-                      ${escapeHtml(
-                        item.barcode
-                      )}
-                    </div>
-
-                  </div>
-
-
-                  <div class="quantity">
-
-                    <button
-                      type="button"
-                      class="secondary"
-                      onclick="changeQuantity(
-                        '${item.barcode}',
-                        -1
-                      )"
-                    >
-                      −
-                    </button>
-
-                    <div class="quantity-value">
-                      ${item.quantity}
-                    </div>
-
-                    <button
-                      type="button"
-                      onclick="changeQuantity(
-                        '${item.barcode}',
-                        1
-                      )"
-                    >
-                      +
-                    </button>
-
-                  </div>
-
-                </div>
-              `;
-
-            }
-          )
-          .join(
-            ""
-          );
-
-
-      document
-        .getElementById(
-          "finishButton"
-        )
-        .disabled =
-          hasProblem;
-
+    if(!result.success){
+      throw new Error(result.error||"Session failed.");
     }
 
-
-
-    function changeQuantity(
-      barcode,
-      change
-    ) {
-
-      const item =
-        sessionItems[
-          barcode
-        ];
-
-
-      if (!item) {
-        return;
-      }
-
-
-      item.quantity +=
-        change;
-
-
-      if (
-        item.quantity <=
-        0
-      ) {
-
-        delete sessionItems[
-          barcode
-        ];
-
-      }
-
-
-      renderSession();
-
-    }
-
-
-
-    async function finishSession() {
-
-      clearMessage();
-
-
-      const items =
-        Object.values(
-          sessionItems
-        );
-
-
-      if (
-        items.length ===
-        0
-      ) {
-
-        showMessage(
-          "No filament has been scanned.",
-          "error"
-        );
-
-        return;
-
-      }
-
-
-      if (
-        items.some(
-          item =>
-            !item.found ||
-            item.loading
-        )
-      ) {
-
-        showMessage(
-          "Resolve unknown filament before finishing.",
-          "error"
-        );
-
-        return;
-
-      }
-
-
-      stopScanner();
-
-
-      const button =
-        document
-          .getElementById(
-            "finishButton"
-          );
-
-
-      button.disabled =
-        true;
-
-
-      button.textContent =
-        "Submitting...";
-
-
-      const payload = {
-
-        operator:
-          operatorName,
-
-        pin:
-          operatorPin,
-
-        action:
-          sessionAction,
-
-        items:
-          items.map(
-            item => ({
-              barcode:
-                item.barcode,
-
-              quantity:
-                item.quantity
-            })
-          )
-
-      };
-
-
-      try {
-
-        /*
-         * Apps Script web apps can be awkward
-         * with browser CORS POST requests.
-         *
-         * Sending as form data avoids a JSON
-         * preflight request.
-         */
-
-        const form =
-          new URLSearchParams();
-
-
-        form.append(
-          "payload",
-          JSON.stringify(
-            payload
-          )
-        );
-
-
-        const response =
-          await fetch(
-            API_URL,
-            {
-              method:
-                "POST",
-
-              body:
-                form
-            }
-          );
-
-
-        const result =
-          await response.json();
-
-
-        if (
-          !result.success
-        ) {
-
-          throw new Error(
-            result.error ||
-            "Session failed."
-          );
-
-        }
-
-
-        document
-          .getElementById(
-            "successDetails"
-          )
-          .innerHTML =
-            "<strong>" +
-            escapeHtml(
-              sessionAction ===
-                "IN"
-                ? "Scan In"
-                : "Scan Out"
-            ) +
-            "</strong><br>" +
-            escapeHtml(
-              String(
-                result.totalRolls
-              )
-            ) +
-            " rolls · " +
-            escapeHtml(
-              String(
-                result.uniqueItems
-              )
-            ) +
-            " filament types<br>" +
-            "Session " +
-            escapeHtml(
-              result.sessionId
-            );
-
-
-        showScreen(
-          "successScreen"
-        );
-
-
-      } catch (error) {
-
-        console.error(
-          error
-        );
-
-
-        showMessage(
-          String(
-            error.message ||
-            error
-          ),
-          "error"
-        );
-
-
-        button.disabled =
-          false;
-
-
-        button.textContent =
-          "Finish Session";
-
-
-        /*
-         * Restart camera because the
-         * submission failed.
-         */
-
-        await startScanner();
-
-      }
-
-    }
-
-
-
-    function showLastScan(
-      text
-    ) {
-
-      const element =
-        document
-          .getElementById(
-            "lastScan"
-          );
-
-
-      element.textContent =
-        "✓ " +
-        text;
-
-
-      element
-        .classList
-        .add(
-          "show"
-        );
-
-
-      clearTimeout(
-        showLastScan.timer
-      );
-
-
-      showLastScan.timer =
-        setTimeout(
-          () => {
-
-            element
-              .classList
-              .remove(
-                "show"
-              );
-
-          },
-          1200
-        );
-
-    }
-
-
-
-    function stopScanner() {
-
-      scanning =
-        false;
-
-
-      if (
-        scannerControls
-      ) {
-
-        try {
-
-          scannerControls
-            .stop();
-
-        } catch (error) {
-
-          console.log(
-            error
-          );
-
-        }
-
-      }
-
-
-      scannerControls =
-        null;
-
-
-      const video =
-        document
-          .getElementById(
-            "video"
-          );
-
-
-      if (
-        video.srcObject
-      ) {
-
-        video
-          .srcObject
-          .getTracks()
-          .forEach(
-            track =>
-              track.stop()
-          );
-
-
-        video.srcObject =
-          null;
-
-      }
-
-    }
-
-
-
-    function cancelSession() {
-
-      if (
-        Object.keys(
-          sessionItems
-        ).length >
-        0
-      ) {
-
-        const confirmed =
-          confirm(
-            "Discard this scan session?"
-          );
-
-
-        if (
-          !confirmed
-        ) {
-
-          return;
-
-        }
-
-      }
-
-
-      stopScanner();
-
-
-      sessionItems =
-        {};
-
-
-      showScreen(
-        "actionScreen"
-      );
-
-    }
-
-
-
-    function newSession() {
-
-      sessionItems =
-        {};
-
-
-      sessionAction =
-        "";
-
-
-      document
-        .getElementById(
-          "finishButton"
-        )
-        .textContent =
-          "Finish Session";
-
-
-      showScreen(
-        "actionScreen"
-      );
-
-    }
-
-
-
-    function logout() {
-
-      stopScanner();
-
-
-      operatorName =
-        "";
-
-      operatorPin =
-        "";
-
-
-      document
-        .getElementById(
-          "operatorName"
-        )
-        .value =
-          "";
-
-
-      document
-        .getElementById(
-          "operatorPin"
-        )
-        .value =
-          "";
-
-
-      showScreen(
-        "loginScreen"
-      );
-
-    }
-
-
-
-    function showScreen(
-      screenId
-    ) {
-
-      [
-        "loginScreen",
-        "actionScreen",
-        "scannerScreen",
-        "successScreen"
-      ]
-        .forEach(
-          id => {
-
-            document
-              .getElementById(
-                id
-              )
-              .classList
-              .add(
-                "hidden"
-              );
-
-          }
-        );
-
-
-      document
-        .getElementById(
-          screenId
-        )
-        .classList
-        .remove(
-          "hidden"
-        );
-
-    }
-
-
-
-    function showMessage(
-      text,
-      type
-    ) {
-
-      const element =
-        document
-          .getElementById(
-            "globalMessage"
-          );
-
-
-      element.textContent =
-        text;
-
-
-      element.className =
-        "message show " +
-        type;
-
-    }
-
-
-
-    function clearMessage() {
-
-      const element =
-        document
-          .getElementById(
-            "globalMessage"
-          );
-
-
-      element.textContent =
-        "";
-
-
-      element.className =
-        "message";
-
-    }
-
-
-
-    function escapeHtml(
-      value
-    ) {
-
-      return String(
-        value ?? ""
-      )
-        .replace(
-          /&/g,
-          "&amp;"
-        )
-        .replace(
-          /</g,
-          "&lt;"
-        )
-        .replace(
-          />/g,
-          "&gt;"
-        )
-        .replace(
-          /"/g,
-          "&quot;"
-        )
-        .replace(
-          /'/g,
-          "&#039;"
-        );
-
-    }
-
-  </script>
-
+    $("successDetails").innerHTML=
+      "<strong>"+
+      escapeHtml(sessionAction==="IN"?"Scan In":"Scan Out")+
+      "</strong><br>"+
+      escapeHtml(String(result.totalRolls))+
+      " rolls · "+
+      escapeHtml(String(result.uniqueItems))+
+      " filament types<br>Session "+
+      escapeHtml(result.sessionId);
+
+    showScreen("successScreen");
+  }catch(error){
+    console.error(error);
+    showMessage(String(error.message||error),"error");
+    button.disabled=false;
+    button.textContent="Finish Session";
+    await startScanner();
+  }
+}
+
+function showLastScan(text){
+  const el=$("lastScan");
+  el.textContent="✓ "+text;
+  el.classList.add("show");
+  clearTimeout(showLastScan.timer);
+  showLastScan.timer=setTimeout(()=>el.classList.remove("show"),1200);
+}
+
+function stopScanner(){
+  scanning=false;
+
+  if(scannerControls){
+    try{scannerControls.stop()}catch(error){console.log(error)}
+  }
+
+  scannerControls=null;
+
+  const video=$("video");
+
+  if(video.srcObject){
+    video.srcObject.getTracks().forEach(track=>track.stop());
+    video.srcObject=null;
+  }
+}
+
+function cancelSession(){
+  if(Object.keys(sessionItems).length){
+    if(!confirm("Discard this scan session?"))return;
+  }
+
+  stopScanner();
+  sessionItems={};
+  showScreen("actionScreen");
+}
+
+function newSession(){
+  sessionItems={};
+  sessionAction="";
+  $("finishButton").textContent="Finish Session";
+  showScreen("actionScreen");
+}
+
+function logout(){
+  stopScanner();
+  operatorName="";
+  operatorPin="";
+  $("operatorName").value="";
+  $("operatorPin").value="";
+  showScreen("loginScreen");
+}
+
+function showScreen(screenId){
+  ["loginScreen","actionScreen","scannerScreen","successScreen"]
+    .forEach(id=>$(id).classList.add("hidden"));
+
+  $(screenId).classList.remove("hidden");
+}
+
+function showMessage(text,type){
+  const el=$("globalMessage");
+  el.textContent=text;
+  el.className="message show "+type;
+}
+
+function clearMessage(){
+  const el=$("globalMessage");
+  el.textContent="";
+  el.className="message";
+}
+
+function escapeHtml(value){
+  return String(value??"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+</script>
 </body>
 </html>
