@@ -713,7 +713,7 @@
     let lastBarcodeTime = 0;
 
     const SAME_BARCODE_COOLDOWN =
-      1200;
+      2000;
 
 
     function continueLogin() {
@@ -1017,7 +1017,47 @@
 
     }
 
-
+    function playBeep() {
+      try {
+        const AudioContextClass =
+          window.AudioContext ||
+          window.webkitAudioContext;
+    
+        if (!AudioContextClass) {
+          return;
+        }
+    
+        const audioContext =
+          new AudioContextClass();
+    
+        const oscillator =
+          audioContext.createOscillator();
+    
+        const gain =
+          audioContext.createGain();
+    
+        oscillator.type = "sine";
+        oscillator.frequency.value = 1000;
+    
+        gain.gain.value = 0.12;
+    
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+    
+        oscillator.start();
+    
+        setTimeout(() => {
+          oscillator.stop();
+          audioContext.close();
+        }, 120);
+    
+      } catch (error) {
+        console.log(
+          "Beep unavailable:",
+          error
+        );
+      }
+    }
 
     function handleScannerResult(
       result,
@@ -1088,7 +1128,7 @@
     async function processScan(
       barcode
     ) {
-
+      playBeep();
       /*
        * Existing barcode in this session.
        *
