@@ -19,13 +19,10 @@
 
     body {
       margin: 0;
-      padding: 20px;
       min-height: 100vh;
+      padding: 18px;
 
-      font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
 
       background: #f4f7fb;
       color: #1f2937;
@@ -38,15 +35,15 @@
     }
 
     .header {
+      margin-bottom: 20px;
       text-align: center;
-      margin-bottom: 24px;
     }
 
     .header h1 {
       margin: 0;
 
-      font-size: 28px;
       color: #004681;
+      font-size: 28px;
     }
 
     .header p {
@@ -57,12 +54,12 @@
     }
 
     .card {
-      background: white;
+      padding: 18px;
 
       border: 1px solid #dbe3ec;
       border-radius: 20px;
 
-      padding: 18px;
+      background: white;
 
       box-shadow:
         0 10px 28px
@@ -71,9 +68,56 @@
 
     #reader {
       width: 100%;
+
       overflow: hidden;
 
       border-radius: 16px;
+
+      background: #111827;
+    }
+
+    button {
+      width: 100%;
+
+      margin-top: 14px;
+      padding: 14px;
+
+      border: 0;
+      border-radius: 12px;
+
+      background: #005bac;
+      color: white;
+
+      font-size: 16px;
+      font-weight: 700;
+
+      cursor: pointer;
+    }
+
+    button:active {
+      background: #004681;
+    }
+
+    .secondary {
+      background: #475467;
+    }
+
+    .status {
+      margin-top: 14px;
+
+      color: #667085;
+      font-size: 13px;
+
+      text-align: center;
+    }
+
+    .camera-info {
+      margin-top: 12px;
+
+      color: #667085;
+      font-size: 12px;
+
+      text-align: center;
     }
 
     .result {
@@ -98,7 +142,7 @@
       color: #667085;
 
       font-size: 12px;
-      font-weight: bold;
+      font-weight: 700;
 
       text-transform: uppercase;
     }
@@ -106,10 +150,10 @@
     .barcode {
       margin-top: 8px;
 
-      font-size: 26px;
-      font-weight: bold;
-
       color: #12314d;
+
+      font-size: 26px;
+      font-weight: 800;
 
       word-break: break-all;
     }
@@ -121,35 +165,23 @@
       font-size: 13px;
     }
 
-    button {
-      width: 100%;
+    .error {
+      display: none;
 
-      margin-top: 16px;
-      padding: 14px;
+      margin-top: 14px;
+      padding: 12px;
 
-      border: none;
+      border: 1px solid #efb4b4;
       border-radius: 12px;
 
-      background: #005bac;
-      color: white;
+      background: #fff1f1;
+      color: #9b1c1c;
 
-      font-size: 16px;
-      font-weight: bold;
-
-      cursor: pointer;
+      font-size: 14px;
     }
 
-    button:active {
-      background: #004681;
-    }
-
-    .status {
-      margin-top: 14px;
-
-      color: #667085;
-      font-size: 13px;
-
-      text-align: center;
+    .error.show {
+      display: block;
     }
 
     .manual {
@@ -165,7 +197,7 @@
       margin-bottom: 8px;
 
       font-size: 14px;
-      font-weight: bold;
+      font-weight: 700;
     }
 
     .manual-row {
@@ -192,25 +224,6 @@
       padding-left: 18px;
       padding-right: 18px;
     }
-
-    .error {
-      display: none;
-
-      margin-top: 15px;
-      padding: 12px;
-
-      border: 1px solid #efb4b4;
-      border-radius: 12px;
-
-      background: #fff1f1;
-      color: #9b1c1c;
-
-      font-size: 14px;
-    }
-
-    .error.show {
-      display: block;
-    }
   </style>
 </head>
 
@@ -218,7 +231,7 @@
 
   <main class="app">
 
-    <div class="header">
+    <header class="header">
 
       <h1>S124 Filament Scanner</h1>
 
@@ -226,13 +239,14 @@
         Scan the EAN barcode on a filament box
       </p>
 
-    </div>
+    </header>
 
 
-    <div class="card">
+    <section class="card">
 
       <button
         id="startButton"
+        type="button"
         onclick="startScanner()"
       >
         📷 Scan Barcode
@@ -248,6 +262,23 @@
       >
         Camera not started
       </div>
+
+
+      <div
+        id="cameraInfo"
+        class="camera-info"
+      ></div>
+
+
+      <button
+        id="zoomButton"
+        class="secondary"
+        type="button"
+        onclick="toggleZoom()"
+        style="display:none;"
+      >
+        Zoom
+      </button>
 
 
       <div
@@ -277,7 +308,10 @@
           EAN-13
         </div>
 
-        <button onclick="scanAgain()">
+        <button
+          type="button"
+          onclick="scanAgain()"
+        >
           Scan Another
         </button>
 
@@ -300,7 +334,10 @@
             placeholder="6975337031345"
           >
 
-          <button onclick="manualEntry()">
+          <button
+            type="button"
+            onclick="manualEntry()"
+          >
             Enter
           </button>
 
@@ -308,7 +345,7 @@
 
       </div>
 
-    </div>
+    </section>
 
   </main>
 
@@ -316,7 +353,18 @@
   <script>
 
     let scanner = null;
+
     let scannerRunning = false;
+
+    let activeTrack = null;
+
+    let zoomSupported = false;
+
+    let zoomMin = 1;
+
+    let zoomMax = 1;
+
+    let zoomCurrent = 1;
 
 
     async function startScanner() {
@@ -324,15 +372,25 @@
       hideError();
       hideResult();
 
-      document.getElementById(
-        "startButton"
-      ).style.display = "none";
+      document
+        .getElementById("startButton")
+        .style.display = "none";
 
 
-      document.getElementById(
-        "status"
-      ).textContent =
-        "Starting camera...";
+      document
+        .getElementById("zoomButton")
+        .style.display = "none";
+
+
+      document
+        .getElementById("status")
+        .textContent =
+          "Starting rear camera...";
+
+
+      document
+        .getElementById("cameraInfo")
+        .textContent = "";
 
 
       try {
@@ -343,49 +401,94 @@
             {
               formatsToSupport: [
                 Html5QrcodeSupportedFormats.EAN_13
-              ]
+              ],
+
+              verbose: false
             }
           );
 
 
-        await scanner.start(
+        const cameraConfig = {
 
-          {
-            facingMode: {
-              exact: "environment"
-            }
+          facingMode: {
+            ideal: "environment"
           },
 
-          {
-            fps: 12,
+          width: {
+            ideal: 1920
+          },
 
-            qrbox: function(
-              width,
-              height
+          height: {
+            ideal: 1080
+          }
+
+        };
+
+
+        const scanConfig = {
+
+          fps: 15,
+
+          aspectRatio: 1.777778,
+
+          qrbox: function(
+            width,
+            height
+          ) {
+
+            let boxWidth =
+              Math.floor(
+                width * 0.90
+              );
+
+
+            let boxHeight =
+              Math.floor(
+                boxWidth * 0.32
+              );
+
+
+            if (
+              boxHeight >
+              height * 0.60
             ) {
 
-              const boxWidth =
+              boxHeight =
                 Math.floor(
-                  width * 0.9
+                  height * 0.60
                 );
 
-              const boxHeight =
-                Math.floor(
-                  boxWidth * 0.4
-                );
-
-
-              return {
-                width: boxWidth,
-                height: boxHeight
-              };
             }
-          },
+
+
+            return {
+
+              width:
+                boxWidth,
+
+              height:
+                boxHeight
+
+            };
+
+          }
+
+        };
+
+
+        await scanner.start(
+
+          cameraConfig,
+
+          scanConfig,
 
           barcodeDetected,
 
           function() {
-            // Ignore normal failed frames.
+
+            // Failed frames are normal.
+            // Keep scanning.
+
           }
 
         );
@@ -394,31 +497,255 @@
         scannerRunning = true;
 
 
-        document.getElementById(
-          "status"
-        ).textContent =
-          "Point the camera at the barcode";
+        document
+          .getElementById("status")
+          .textContent =
+            "Point the camera at the EAN barcode";
 
+
+        await configureCamera();
 
       } catch (error) {
 
         console.error(error);
 
 
-        document.getElementById(
-          "startButton"
-        ).style.display = "block";
+        scannerRunning = false;
 
 
-        document.getElementById(
-          "status"
-        ).textContent =
-          "Camera unavailable";
+        document
+          .getElementById("startButton")
+          .style.display =
+            "block";
+
+
+        document
+          .getElementById("status")
+          .textContent =
+            "Camera unavailable";
 
 
         showError(
-          "Unable to open camera. " +
+          "Unable to open camera: " +
           String(error)
+        );
+
+      }
+
+    }
+
+
+    async function configureCamera() {
+
+      try {
+
+        const video =
+          document.querySelector(
+            "#reader video"
+          );
+
+
+        if (
+          !video ||
+          !video.srcObject
+        ) {
+
+          return;
+
+        }
+
+
+        const tracks =
+          video.srcObject
+            .getVideoTracks();
+
+
+        if (
+          !tracks ||
+          tracks.length === 0
+        ) {
+
+          return;
+
+        }
+
+
+        activeTrack =
+          tracks[0];
+
+
+        const settings =
+          activeTrack
+            .getSettings();
+
+
+        const capabilities =
+          typeof activeTrack.getCapabilities ===
+            "function"
+            ? activeTrack.getCapabilities()
+            : {};
+
+
+        document
+          .getElementById("cameraInfo")
+          .textContent =
+            (
+              settings.width &&
+              settings.height
+            )
+              ? (
+                  settings.width +
+                  " × " +
+                  settings.height
+                )
+              : "";
+
+
+        if (
+          capabilities.focusMode &&
+          capabilities.focusMode.includes(
+            "continuous"
+          )
+        ) {
+
+          try {
+
+            await activeTrack
+              .applyConstraints({
+
+                advanced: [
+                  {
+                    focusMode:
+                      "continuous"
+                  }
+                ]
+
+              });
+
+          } catch (error) {
+
+            console.log(
+              "Continuous focus unavailable:",
+              error
+            );
+
+          }
+
+        }
+
+
+        if (
+          capabilities.zoom &&
+          typeof capabilities.zoom.min ===
+            "number" &&
+          typeof capabilities.zoom.max ===
+            "number"
+        ) {
+
+          zoomSupported = true;
+
+          zoomMin =
+            capabilities.zoom.min;
+
+          zoomMax =
+            capabilities.zoom.max;
+
+          zoomCurrent =
+            Math.max(
+              zoomMin,
+              Math.min(
+                2,
+                zoomMax
+              )
+            );
+
+
+          document
+            .getElementById("zoomButton")
+            .style.display =
+              "block";
+
+        } else {
+
+          zoomSupported = false;
+
+        }
+
+      } catch (error) {
+
+        console.log(
+          "Camera configuration:",
+          error
+        );
+
+      }
+
+    }
+
+
+    async function toggleZoom() {
+
+      if (
+        !zoomSupported ||
+        !activeTrack
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        zoomCurrent >
+        zoomMin
+      ) {
+
+        zoomCurrent =
+          zoomMin;
+
+      } else {
+
+        zoomCurrent =
+          Math.max(
+            zoomMin,
+            Math.min(
+              2,
+              zoomMax
+            )
+          );
+
+      }
+
+
+      try {
+
+        await activeTrack
+          .applyConstraints({
+
+            advanced: [
+              {
+                zoom:
+                  zoomCurrent
+              }
+            ]
+
+          });
+
+
+        document
+          .getElementById("zoomButton")
+          .textContent =
+            zoomCurrent > zoomMin
+              ? "Zoom: " +
+                zoomCurrent.toFixed(1) +
+                "×"
+              : "Zoom: Off";
+
+      } catch (error) {
+
+        console.log(
+          "Zoom unavailable:",
+          error
         );
 
       }
@@ -431,21 +758,31 @@
     ) {
 
       if (!scannerRunning) {
+
         return;
+
       }
 
 
       const barcode =
-        String(decodedText)
-          .trim();
+        String(
+          decodedText || ""
+        ).trim();
 
 
-      if (!/^\d{13}$/.test(barcode)) {
+      if (
+        !/^\d{13}$/.test(
+          barcode
+        )
+      ) {
+
         return;
+
       }
 
 
-      scannerRunning = false;
+      scannerRunning =
+        false;
 
 
       try {
@@ -459,15 +796,30 @@
       }
 
 
-      document.getElementById(
-        "reader"
-      ).innerHTML = "";
+      activeTrack =
+        null;
 
 
-      document.getElementById(
-        "status"
-      ).textContent =
-        "Scan complete";
+      document
+        .getElementById("reader")
+        .innerHTML = "";
+
+
+      document
+        .getElementById("zoomButton")
+        .style.display =
+          "none";
+
+
+      document
+        .getElementById("status")
+        .textContent =
+          "Scan complete";
+
+
+      document
+        .getElementById("cameraInfo")
+        .textContent = "";
 
 
       showBarcode(
@@ -483,45 +835,44 @@
       format
     ) {
 
-      document.getElementById(
-        "barcode"
-      ).textContent =
-        barcode;
+      document
+        .getElementById("barcode")
+        .textContent =
+          barcode;
 
 
-      document.getElementById(
-        "format"
-      ).textContent =
-        format;
+      document
+        .getElementById("format")
+        .textContent =
+          format;
 
 
-      document.getElementById(
-        "result"
-      ).classList.add(
-        "show"
-      );
+      document
+        .getElementById("result")
+        .classList.add(
+          "show"
+        );
 
     }
 
 
-    function scanAgain() {
+    async function scanAgain() {
 
       hideResult();
 
-      document.getElementById(
-        "reader"
-      ).innerHTML = "";
+
+      document
+        .getElementById("reader")
+        .innerHTML = "";
 
 
-      document.getElementById(
-        "startButton"
-      ).style.display = "block";
+      document
+        .getElementById("status")
+        .textContent =
+          "Ready to scan";
 
 
-      document.getElementById(
-        "status"
-      ).textContent =
-        "Ready to scan";
+      await startScanner();
 
     }
 
@@ -532,12 +883,19 @@
 
 
       const barcode =
-        document.getElementById(
-          "manualBarcode"
-        ).value.trim();
+        document
+          .getElementById(
+            "manualBarcode"
+          )
+          .value
+          .trim();
 
 
-      if (!/^\d{13}$/.test(barcode)) {
+      if (
+        !/^\d{13}$/.test(
+          barcode
+        )
+      ) {
 
         showError(
           "Enter a valid 13-digit EAN barcode."
@@ -558,41 +916,45 @@
 
     function hideResult() {
 
-      document.getElementById(
-        "result"
-      ).classList.remove(
-        "show"
-      );
+      document
+        .getElementById("result")
+        .classList.remove(
+          "show"
+        );
 
     }
 
 
-    function showError(message) {
+    function showError(
+      message
+    ) {
 
       const error =
-        document.getElementById(
-          "error"
-        );
+        document
+          .getElementById(
+            "error"
+          );
 
 
       error.textContent =
         message;
 
 
-      error.classList.add(
-        "show"
-      );
+      error
+        .classList.add(
+          "show"
+        );
 
     }
 
 
     function hideError() {
 
-      document.getElementById(
-        "error"
-      ).classList.remove(
-        "show"
-      );
+      document
+        .getElementById("error")
+        .classList.remove(
+          "show"
+        );
 
     }
 
