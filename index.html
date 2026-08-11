@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
 
@@ -22,7 +23,10 @@
       min-height: 100vh;
       padding: 18px;
 
-      font-family: Arial, Helvetica, sans-serif;
+      font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 
       background: #f4f7fb;
       color: #1f2937;
@@ -41,14 +45,12 @@
 
     .header h1 {
       margin: 0;
-
       color: #004681;
       font-size: 28px;
     }
 
     .header p {
       margin: 8px 0 0;
-
       color: #667085;
       font-size: 15px;
     }
@@ -68,11 +70,8 @@
 
     #reader {
       width: 100%;
-
       overflow: hidden;
-
       border-radius: 16px;
-
       background: #111827;
     }
 
@@ -112,9 +111,9 @@
     }
 
     .camera-info {
-      margin-top: 12px;
+      margin-top: 8px;
 
-      color: #667085;
+      color: #98a2b3;
       font-size: 12px;
 
       text-align: center;
@@ -221,11 +220,13 @@
       width: auto;
 
       margin: 0;
+
       padding-left: 18px;
       padding-right: 18px;
     }
   </style>
 </head>
+
 
 <body>
 
@@ -353,17 +354,13 @@
   <script>
 
     let scanner = null;
-
     let scannerRunning = false;
 
     let activeTrack = null;
 
     let zoomSupported = false;
-
     let zoomMin = 1;
-
     let zoomMax = 1;
-
     let zoomCurrent = 1;
 
 
@@ -372,14 +369,17 @@
       hideError();
       hideResult();
 
+
       document
         .getElementById("startButton")
-        .style.display = "none";
+        .style.display =
+          "none";
 
 
       document
         .getElementById("zoomButton")
-        .style.display = "none";
+        .style.display =
+          "none";
 
 
       document
@@ -390,7 +390,8 @@
 
       document
         .getElementById("cameraInfo")
-        .textContent = "";
+        .textContent =
+          "";
 
 
       try {
@@ -408,19 +409,16 @@
           );
 
 
+        /*
+         * html5-qrcode requires cameraIdOrConfig
+         * to contain only one camera selector.
+         *
+         * Resolution is handled separately below.
+         */
         const cameraConfig = {
 
-          facingMode: {
-            ideal: "environment"
-          },
-
-          width: {
-            ideal: 1920
-          },
-
-          height: {
-            ideal: 1080
-          }
+          facingMode:
+            "environment"
 
         };
 
@@ -428,8 +426,6 @@
         const scanConfig = {
 
           fps: 15,
-
-          aspectRatio: 1.777778,
 
           qrbox: function(
             width,
@@ -471,6 +467,22 @@
 
             };
 
+          },
+
+
+          videoConstraints: {
+
+            facingMode:
+              "environment",
+
+            width: {
+              ideal: 1920
+            },
+
+            height: {
+              ideal: 1080
+            }
+
           }
 
         };
@@ -486,15 +498,18 @@
 
           function() {
 
-            // Failed frames are normal.
-            // Keep scanning.
+            /*
+             * Failed frames are normal.
+             * Scanner keeps trying.
+             */
 
           }
 
         );
 
 
-        scannerRunning = true;
+        scannerRunning =
+          true;
 
 
         document
@@ -505,12 +520,14 @@
 
         await configureCamera();
 
+
       } catch (error) {
 
         console.error(error);
 
 
-        scannerRunning = false;
+        scannerRunning =
+          false;
 
 
         document
@@ -556,7 +573,8 @@
 
 
         const tracks =
-          video.srcObject
+          video
+            .srcObject
             .getVideoTracks();
 
 
@@ -579,27 +597,47 @@
             .getSettings();
 
 
-        const capabilities =
-          typeof activeTrack.getCapabilities ===
-            "function"
-            ? activeTrack.getCapabilities()
-            : {};
+        let capabilities =
+          {};
 
 
-        document
-          .getElementById("cameraInfo")
-          .textContent =
-            (
-              settings.width &&
-              settings.height
+        if (
+          typeof activeTrack
+            .getCapabilities ===
+          "function"
+        ) {
+
+          capabilities =
+            activeTrack
+              .getCapabilities();
+
+        }
+
+
+        /*
+         * Show actual camera resolution.
+         */
+
+        if (
+          settings.width &&
+          settings.height
+        ) {
+
+          document
+            .getElementById(
+              "cameraInfo"
             )
-              ? (
-                  settings.width +
-                  " × " +
-                  settings.height
-                )
-              : "";
+            .textContent =
+              settings.width +
+              " × " +
+              settings.height;
 
+        }
+
+
+        /*
+         * Try continuous autofocus.
+         */
 
         if (
           capabilities.focusMode &&
@@ -614,18 +652,26 @@
               .applyConstraints({
 
                 advanced: [
+
                   {
                     focusMode:
                       "continuous"
                   }
+
                 ]
 
               });
 
+
+            console.log(
+              "Continuous autofocus enabled."
+            );
+
+
           } catch (error) {
 
             console.log(
-              "Continuous focus unavailable:",
+              "Unable to enable continuous autofocus:",
               error
             );
 
@@ -633,6 +679,10 @@
 
         }
 
+
+        /*
+         * Check whether browser exposes zoom.
+         */
 
         if (
           capabilities.zoom &&
@@ -642,39 +692,47 @@
             "number"
         ) {
 
-          zoomSupported = true;
+          zoomSupported =
+            true;
+
 
           zoomMin =
             capabilities.zoom.min;
 
+
           zoomMax =
             capabilities.zoom.max;
 
+
           zoomCurrent =
-            Math.max(
-              zoomMin,
-              Math.min(
-                2,
-                zoomMax
-              )
+            zoomMin;
+
+
+          const zoomButton =
+            document.getElementById(
+              "zoomButton"
             );
 
 
-          document
-            .getElementById("zoomButton")
-            .style.display =
-              "block";
+          zoomButton.style.display =
+            "block";
+
+
+          zoomButton.textContent =
+            "Zoom: Off";
 
         } else {
 
-          zoomSupported = false;
+          zoomSupported =
+            false;
 
         }
+
 
       } catch (error) {
 
         console.log(
-          "Camera configuration:",
+          "Camera configuration error:",
           error
         );
 
@@ -694,6 +752,11 @@
 
       }
 
+
+      /*
+       * Toggle between minimum zoom
+       * and approximately 2x.
+       */
 
       if (
         zoomCurrent >
@@ -723,23 +786,30 @@
           .applyConstraints({
 
             advanced: [
+
               {
                 zoom:
                   zoomCurrent
               }
+
             ]
 
           });
 
 
         document
-          .getElementById("zoomButton")
+          .getElementById(
+            "zoomButton"
+          )
           .textContent =
             zoomCurrent > zoomMin
-              ? "Zoom: " +
-                zoomCurrent.toFixed(1) +
-                "×"
+              ? (
+                  "Zoom: " +
+                  zoomCurrent.toFixed(1) +
+                  "×"
+                )
               : "Zoom: Off";
+
 
       } catch (error) {
 
@@ -757,7 +827,9 @@
       decodedText
     ) {
 
-      if (!scannerRunning) {
+      if (
+        !scannerRunning
+      ) {
 
         return;
 
@@ -767,8 +839,13 @@
       const barcode =
         String(
           decodedText || ""
-        ).trim();
+        )
+          .trim();
 
+
+      /*
+       * Only accept 13 digit EAN values.
+       */
 
       if (
         !/^\d{13}$/.test(
@@ -802,24 +879,32 @@
 
       document
         .getElementById("reader")
-        .innerHTML = "";
+        .innerHTML =
+          "";
 
 
       document
-        .getElementById("zoomButton")
+        .getElementById(
+          "zoomButton"
+        )
         .style.display =
           "none";
 
 
       document
-        .getElementById("status")
+        .getElementById(
+          "status"
+        )
         .textContent =
           "Scan complete";
 
 
       document
-        .getElementById("cameraInfo")
-        .textContent = "";
+        .getElementById(
+          "cameraInfo"
+        )
+        .textContent =
+          "";
 
 
       showBarcode(
@@ -836,19 +921,25 @@
     ) {
 
       document
-        .getElementById("barcode")
+        .getElementById(
+          "barcode"
+        )
         .textContent =
           barcode;
 
 
       document
-        .getElementById("format")
+        .getElementById(
+          "format"
+        )
         .textContent =
           format;
 
 
       document
-        .getElementById("result")
+        .getElementById(
+          "result"
+        )
         .classList.add(
           "show"
         );
@@ -862,12 +953,17 @@
 
 
       document
-        .getElementById("reader")
-        .innerHTML = "";
+        .getElementById(
+          "reader"
+        )
+        .innerHTML =
+          "";
 
 
       document
-        .getElementById("status")
+        .getElementById(
+          "status"
+        )
         .textContent =
           "Ready to scan";
 
@@ -917,7 +1013,9 @@
     function hideResult() {
 
       document
-        .getElementById("result")
+        .getElementById(
+          "result"
+        )
         .classList.remove(
           "show"
         );
@@ -951,7 +1049,9 @@
     function hideError() {
 
       document
-        .getElementById("error")
+        .getElementById(
+          "error"
+        )
         .classList.remove(
           "show"
         );
@@ -961,4 +1061,5 @@
   </script>
 
 </body>
+
 </html>
