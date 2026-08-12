@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
@@ -95,7 +97,6 @@
 
     button {
       width: 100%;
-
       padding: 14px;
 
       border: 0;
@@ -108,6 +109,8 @@
       font-weight: 700;
 
       cursor: pointer;
+
+      touch-action: manipulation;
     }
 
     button:disabled {
@@ -116,7 +119,7 @@
     }
 
     button:active {
-      transform: scale(0.99);
+      transform: scale(0.98);
     }
 
     .secondary {
@@ -134,10 +137,7 @@
 
     .action-grid {
       display: grid;
-
-      grid-template-columns:
-        1fr 1fr;
-
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
 
@@ -148,17 +148,16 @@
 
     .action-button span {
       display: block;
-
       margin-bottom: 8px;
-
       font-size: 30px;
     }
 
     .session-header {
       display: flex;
-
       align-items: center;
       justify-content: space-between;
+
+      gap: 12px;
 
       margin-bottom: 14px;
     }
@@ -170,12 +169,13 @@
 
     .session-operator {
       margin-top: 4px;
-
       color: #667085;
       font-size: 13px;
     }
 
     .count-badge {
+      flex: 0 0 auto;
+
       padding: 8px 12px;
 
       border-radius: 999px;
@@ -218,13 +218,9 @@
       width: 88%;
       height: 100px;
 
-      transform:
-        translate(-50%, -50%);
+      transform: translate(-50%, -50%);
 
-      border:
-        3px solid
-        rgba(255, 255, 255, 0.95);
-
+      border: 3px solid rgba(255, 255, 255, 0.95);
       border-radius: 12px;
 
       pointer-events: none;
@@ -243,8 +239,7 @@
       width: 84%;
       height: 2px;
 
-      transform:
-        translateY(-50%);
+      transform: translateY(-50%);
 
       background: #ef4444;
 
@@ -296,8 +291,7 @@
     .item {
       display: grid;
 
-      grid-template-columns:
-        minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto;
 
       gap: 12px;
 
@@ -333,15 +327,9 @@
       color: #b42318;
     }
 
-    /*
-     * FILAMENT COLOUR SWATCH
-     */
-
     .colour-row {
       display: flex;
-
       align-items: center;
-
       gap: 8px;
     }
 
@@ -361,25 +349,27 @@
 
     .quantity {
       display: flex;
-
       align-items: center;
-
       gap: 8px;
     }
 
     .quantity button {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
 
       padding: 0;
 
       border-radius: 50%;
 
-      font-size: 20px;
+      font-size: 22px;
+      line-height: 1;
+
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .quantity-value {
-      min-width: 25px;
+      min-width: 28px;
 
       font-size: 18px;
       font-weight: 800;
@@ -433,7 +423,6 @@
 
     .success-icon {
       margin-bottom: 12px;
-
       font-size: 55px;
     }
 
@@ -689,12 +678,10 @@
         Session Complete
       </h2>
 
-
       <div
         id="successDetails"
         class="success-details"
       ></div>
-
 
       <button
         id="newSessionButton"
@@ -819,7 +806,7 @@
 
 
     /*
-     * LOGIN + PIN VALIDATION
+     * LOGIN
      */
 
     async function continueLogin() {
@@ -902,10 +889,8 @@
         ) {
 
           throw new Error(
-            result &&
-            result.error
-              ? result.error
-              : "Unable to validate PIN."
+            result?.error ||
+            "Unable to validate PIN."
           );
 
         }
@@ -1312,10 +1297,8 @@
 
 
       if (
-        barcode ===
-          lastBarcode &&
-        now -
-          lastBarcodeTime <
+        barcode === lastBarcode &&
+        now - lastBarcodeTime <
           SAME_BARCODE_COOLDOWN
       ) {
 
@@ -1347,12 +1330,17 @@
       barcode
     ) {
 
+      barcode =
+        String(
+          barcode || ""
+        ).trim();
+
+
       playBeep();
 
 
       /*
-       * Barcode already exists
-       * in this session.
+       * ALREADY SCANNED
        */
 
       if (
@@ -1390,7 +1378,7 @@
 
 
       /*
-       * Temporary loading item
+       * LOADING ITEM
        */
 
       sessionItems[
@@ -1590,7 +1578,7 @@
 
 
     /*
-     * SCANNER BEEP
+     * BEEP
      */
 
     function playBeep() {
@@ -1680,7 +1668,7 @@
 
 
     /*
-     * CATALOGUE LOOKUP
+     * LOOKUP
      */
 
     function lookupBarcode(
@@ -1986,12 +1974,6 @@
               }
 
 
-              /*
-               * Default grey swatch only
-               * while loading or when a
-               * colour code is unavailable.
-               */
-
               const swatchColour =
 
                 item.colourCode &&
@@ -2002,6 +1984,13 @@
                   ? item.colourCode
 
                   : "#d0d5dd";
+
+
+              const cleanBarcode =
+                String(
+                  item.barcode ||
+                  ""
+                ).trim();
 
 
               return `
@@ -2016,12 +2005,9 @@
 
                       <span
                         class="colour-swatch"
-                        style="
-                          background:
-                          ${escapeHtml(
-                            swatchColour
-                          )};
-                        "
+                        style="background:${escapeHtml(
+                          swatchColour
+                        )};"
                       ></span>
 
                       <span>
@@ -2045,7 +2031,7 @@
                     <div class="item-barcode">
 
                       ${escapeHtml(
-                        item.barcode
+                        cleanBarcode
                       )}
 
                     </div>
@@ -2057,15 +2043,10 @@
 
                     <button
                       type="button"
-                      class="
-                        secondary
-                        qty-minus
-                      "
-                      data-barcode="
-                        ${escapeHtml(
-                          item.barcode
-                        )}
-                      "
+                      class="secondary qty-minus"
+                      data-barcode="${escapeHtml(
+                        cleanBarcode
+                      )}"
                     >
                       −
                     </button>
@@ -2081,11 +2062,9 @@
                     <button
                       type="button"
                       class="qty-plus"
-                      data-barcode="
-                        ${escapeHtml(
-                          item.barcode
-                        )}
-                      "
+                      data-barcode="${escapeHtml(
+                        cleanBarcode
+                      )}"
                     >
                       +
                     </button>
@@ -2105,7 +2084,7 @@
 
 
       /*
-       * QUANTITY BUTTONS
+       * MINUS BUTTONS
        */
 
       list
@@ -2121,16 +2100,23 @@
 
                 "click",
 
-                () => {
+                event => {
+
+                  event.preventDefault();
+
+
+                  const barcode =
+                    String(
+                      button
+                        .dataset
+                        .barcode ||
+                      ""
+                    ).trim();
+
 
                   changeQuantity(
-
-                    button
-                      .dataset
-                      .barcode,
-
+                    barcode,
                     -1
-
                   );
 
                 }
@@ -2141,6 +2127,10 @@
 
         );
 
+
+      /*
+       * PLUS BUTTONS
+       */
 
       list
         .querySelectorAll(
@@ -2155,16 +2145,23 @@
 
                 "click",
 
-                () => {
+                event => {
+
+                  event.preventDefault();
+
+
+                  const barcode =
+                    String(
+                      button
+                        .dataset
+                        .barcode ||
+                      ""
+                    ).trim();
+
 
                   changeQuantity(
-
-                    button
-                      .dataset
-                      .barcode,
-
+                    barcode,
                     1
-
                   );
 
                 }
@@ -2184,13 +2181,19 @@
 
 
     /*
-     * MANUAL QUANTITY CHANGE
+     * CHANGE QUANTITY
      */
 
     function changeQuantity(
       barcode,
       change
     ) {
+
+      barcode =
+        String(
+          barcode || ""
+        ).trim();
+
 
       const item =
         sessionItems[
@@ -2201,6 +2204,12 @@
       if (
         !item
       ) {
+
+        console.warn(
+          "Quantity item not found:",
+          barcode
+        );
+
 
         return;
 
@@ -2229,7 +2238,7 @@
 
 
     /*
-     * SUBMIT SESSION
+     * FINISH SESSION
      */
 
     async function finishSession() {
@@ -2311,7 +2320,10 @@
             item => ({
 
               barcode:
-                item.barcode,
+                String(
+                  item.barcode ||
+                  ""
+                ).trim(),
 
               quantity:
                 item.quantity
@@ -2381,8 +2393,11 @@
 
             escapeHtml(
 
-              sessionAction === "IN"
+              sessionAction ===
+                "IN"
+
                 ? "Scan In"
+
                 : "Scan Out"
 
             ) +
@@ -2452,7 +2467,7 @@
 
 
     /*
-     * LAST SCAN MESSAGE
+     * LAST SCAN
      */
 
     function showLastScan(
@@ -2563,7 +2578,7 @@
 
 
     /*
-     * CANCEL
+     * CANCEL SESSION
      */
 
     function cancelSession() {
@@ -2781,4 +2796,5 @@
   </script>
 
 </body>
+
 </html>
