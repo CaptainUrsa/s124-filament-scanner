@@ -255,6 +255,10 @@
       text-align: center;
     }
 
+    .torch-button {
+      margin-top: 10px;
+    }
+
     .last-scan {
       display: none;
 
@@ -624,6 +628,16 @@
       </div>
 
 
+      <button
+        id="torchButton"
+        class="secondary torch-button"
+        type="button"
+        disabled
+      >
+        🔦 Torch Unavailable
+      </button>
+
+
       <div
         id="lastScan"
         class="last-scan"
@@ -720,6 +734,9 @@
     let lastBarcode = "";
     let lastBarcodeTime = 0;
 
+    let activeVideoTrack = null;
+    let torchOn = false;
+
 
     const $ =
       id =>
@@ -784,6 +801,13 @@
       .addEventListener(
         "click",
         newSession
+      );
+
+
+    $("torchButton")
+      .addEventListener(
+        "click",
+        toggleTorch
       );
 
 
@@ -1072,6 +1096,24 @@
           true;
 
 
+        torchOn =
+          false;
+
+
+        activeVideoTrack =
+          null;
+
+
+        $("torchButton")
+          .disabled =
+            true;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Checking Torch...";
+
+
         $("scannerStatus")
           .textContent =
             "Starting rear camera...";
@@ -1124,7 +1166,7 @@
 
         setTimeout(
           configureCamera,
-          500
+          700
         );
 
 
@@ -1142,6 +1184,16 @@
         $("scannerStatus")
           .textContent =
             "Unable to start camera";
+
+
+        $("torchButton")
+          .disabled =
+            true;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Torch Unavailable";
 
 
         showMessage(
@@ -1198,48 +1250,86 @@
           tracks[0];
 
 
-        if (
+        activeVideoTrack =
+          track;
+
+
+        const capabilities =
+
           typeof track.getCapabilities ===
           "function"
+
+            ? track.getCapabilities()
+
+            : {};
+
+
+        /*
+         * AUTOFOCUS
+         */
+
+        if (
+          capabilities.focusMode &&
+          capabilities.focusMode.includes(
+            "continuous"
+          )
         ) {
 
-          const capabilities =
-            track
-              .getCapabilities();
+          try {
+
+            await track
+              .applyConstraints({
+
+                advanced: [
+                  {
+                    focusMode:
+                      "continuous"
+                  }
+                ]
+
+              });
 
 
-          if (
-            capabilities.focusMode &&
-            capabilities.focusMode.includes(
-              "continuous"
-            )
-          ) {
+          } catch (error) {
 
-            try {
-
-              await track
-                .applyConstraints({
-
-                  advanced: [
-                    {
-                      focusMode:
-                        "continuous"
-                    }
-                  ]
-
-                });
-
-
-            } catch (error) {
-
-              console.log(
-                "Continuous autofocus unavailable:",
-                error
-              );
-
-            }
+            console.log(
+              "Continuous autofocus unavailable:",
+              error
+            );
 
           }
+
+        }
+
+
+        /*
+         * TORCH
+         */
+
+        if (
+          capabilities.torch === true
+        ) {
+
+          $("torchButton")
+            .disabled =
+              false;
+
+
+          $("torchButton")
+            .textContent =
+              "🔦 Torch Off";
+
+
+        } else {
+
+          $("torchButton")
+            .disabled =
+              true;
+
+
+          $("torchButton")
+            .textContent =
+              "🔦 Torch Unavailable";
 
         }
 
@@ -1249,6 +1339,115 @@
         console.log(
           "Camera configuration error:",
           error
+        );
+
+
+        $("torchButton")
+          .disabled =
+            true;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Torch Unavailable";
+
+      }
+
+    }
+
+
+    /*
+     * TORCH CONTROL
+     */
+
+    async function toggleTorch() {
+
+      if (
+        !activeVideoTrack
+      ) {
+
+        return;
+
+      }
+
+
+      try {
+
+        const capabilities =
+
+          typeof activeVideoTrack.getCapabilities ===
+          "function"
+
+            ? activeVideoTrack.getCapabilities()
+
+            : {};
+
+
+        if (
+          capabilities.torch !== true
+        ) {
+
+          showMessage(
+            "Torch is not supported on this camera.",
+            "error"
+          );
+
+          return;
+
+        }
+
+
+        const nextTorchState =
+          !torchOn;
+
+
+        await activeVideoTrack
+          .applyConstraints({
+
+            advanced: [
+              {
+                torch:
+                  nextTorchState
+              }
+            ]
+
+          });
+
+
+        torchOn =
+          nextTorchState;
+
+
+        $("torchButton")
+          .textContent =
+
+            torchOn
+
+              ? "🔦 Torch On"
+
+              : "🔦 Torch Off";
+
+
+      } catch (error) {
+
+        console.error(
+          "Torch error:",
+          error
+        );
+
+
+        torchOn =
+          false;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Torch Off";
+
+
+        showMessage(
+          "Unable to control the camera torch.",
+          "error"
         );
 
       }
@@ -1339,10 +1538,6 @@
       playBeep();
 
 
-      /*
-       * ALREADY SCANNED
-       */
-
       if (
         sessionItems[
           barcode
@@ -1376,10 +1571,6 @@
 
       }
 
-
-      /*
-       * LOADING ITEM
-       */
 
       sessionItems[
         barcode
@@ -2083,10 +2274,6 @@
           );
 
 
-      /*
-       * MINUS BUTTONS
-       */
-
       list
         .querySelectorAll(
           ".qty-minus"
@@ -2127,10 +2314,6 @@
 
         );
 
-
-      /*
-       * PLUS BUTTONS
-       */
 
       list
         .querySelectorAll(
@@ -2181,7 +2364,7 @@
 
 
     /*
-     * CHANGE QUANTITY
+     * QUANTITY
      */
 
     function changeQuantity(
@@ -2525,6 +2708,60 @@
         false;
 
 
+      /*
+       * Try switching torch off
+       * before stopping the track.
+       */
+
+      if (
+        activeVideoTrack &&
+        torchOn
+      ) {
+
+        try {
+
+          activeVideoTrack
+            .applyConstraints({
+
+              advanced: [
+                {
+                  torch:
+                    false
+                }
+              ]
+
+            });
+
+        } catch (error) {
+
+          console.log(
+            "Could not disable torch:",
+            error
+          );
+
+        }
+
+      }
+
+
+      torchOn =
+        false;
+
+
+      activeVideoTrack =
+        null;
+
+
+      $("torchButton")
+        .disabled =
+          true;
+
+
+      $("torchButton")
+        .textContent =
+          "🔦 Torch Unavailable";
+
+
       if (
         scannerControls
       ) {
@@ -2578,7 +2815,7 @@
 
 
     /*
-     * CANCEL SESSION
+     * CANCEL
      */
 
     function cancelSession() {
@@ -2682,7 +2919,7 @@
 
 
     /*
-     * SCREEN CONTROL
+     * SCREENS
      */
 
     function showScreen(
@@ -2760,7 +2997,7 @@
 
 
     /*
-     * HTML SAFETY
+     * HTML ESCAPE
      */
 
     function escapeHtml(
