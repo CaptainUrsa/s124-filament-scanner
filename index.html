@@ -1,757 +1,3824 @@
-const SPREADSHEET_ID="1VqA5C8Q-_-ulvkrB8MCVD2S5fKb2xIicHKKrL7rD6e0";
-const INVENTORY_SHEET="Filament Inventory";
-const TRANSACTIONS_SHEET="Filament Transactions";
-const CATALOGUE_SHEET="Filament Catalogue";
-const TIMEZONE="Asia/Singapore";
+<!DOCTYPE html>
+<html lang="en">
 
-function doGet(e){
-  try{
-    const action=String(e?.parameter?.action||"ping").trim().toLowerCase();
+<head>
+  <meta charset="UTF-8">
 
-    if(action==="ping"){
-      return createApiResponse({success:true,message:"S124 Filament API online"},e);
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>S124 Filament Management</title>
+
+  <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
     }
 
-    if(action==="lookup"){
-      return createApiResponse(
-        lookupFilament(String(e.parameter.barcode||"").trim()),
-        e
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 18px;
+
+      font-family: Arial, Helvetica, sans-serif;
+
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .header {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      color: #004681;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 8px 0 0;
+      color: #667085;
+      font-size: 15px;
+    }
+
+    .card {
+      margin-bottom: 16px;
+      padding: 18px;
+
+      border: 1px solid #dbe3ec;
+      border-radius: 20px;
+
+      background: white;
+
+      box-shadow:
+        0 10px 28px
+        rgba(31, 41, 55, 0.08);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    input,
+    select {
+      width: 100%;
+
+      margin-bottom: 16px;
+      padding: 13px;
+
+      border: 1px solid #d0d5dd;
+      border-radius: 10px;
+
+      font-size: 16px;
+    }
+
+    input:focus,
+    select:focus {
+      outline: 2px solid #84caff;
+      border-color: #1570ef;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+
+      border: 0;
+      border-radius: 12px;
+
+      background: #005bac;
+      color: white;
+
+      font-size: 16px;
+      font-weight: 700;
+
+      cursor: pointer;
+
+      touch-action: manipulation;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .secondary {
+      background: #475467;
+    }
+
+    .cancel {
+      margin-top: 10px;
+
+      background: transparent;
+      color: #667085;
+
+      border: 1px solid #d0d5dd;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .action-button {
+      min-height: 105px;
+      font-size: 18px;
+    }
+
+    .action-button span {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 30px;
+    }
+
+    .session-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 12px;
+
+      margin-bottom: 14px;
+    }
+
+    .session-title {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .session-operator {
+      margin-top: 4px;
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .count-badge {
+      flex: 0 0 auto;
+
+      padding: 8px 12px;
+
+      border-radius: 999px;
+
+      background: #eaf2fb;
+      color: #005bac;
+
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .camera-wrap {
+      position: relative;
+
+      width: 100%;
+      overflow: hidden;
+
+      border-radius: 16px;
+
+      background: #111827;
+    }
+
+    video {
+      display: block;
+
+      width: 100%;
+      height: 300px;
+
+      object-fit: cover;
+
+      background: #111827;
+    }
+
+    .scan-guide {
+      position: absolute;
+
+      top: 50%;
+      left: 50%;
+
+      width: 88%;
+      height: 100px;
+
+      transform: translate(-50%, -50%);
+
+      border: 3px solid rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+
+      pointer-events: none;
+
+      box-shadow:
+        0 0 0 9999px
+        rgba(0, 0, 0, 0.15);
+    }
+
+    .scan-line {
+      position: absolute;
+
+      top: 50%;
+      left: 8%;
+
+      width: 84%;
+      height: 2px;
+
+      transform: translateY(-50%);
+
+      background: #ef4444;
+
+      pointer-events: none;
+    }
+
+    .status {
+      margin-top: 10px;
+
+      color: #667085;
+      font-size: 13px;
+
+      text-align: center;
+    }
+
+    .torch-button {
+      margin-top: 10px;
+    }
+
+    .last-scan {
+      display: none;
+
+      margin-top: 12px;
+      padding: 12px;
+
+      border-radius: 12px;
+
+      background: #ecfdf3;
+      color: #027a48;
+
+      font-size: 14px;
+      font-weight: 700;
+
+      text-align: center;
+    }
+
+    .last-scan.show {
+      display: block;
+    }
+
+    .session-list {
+      margin-top: 18px;
+    }
+
+    .empty {
+      padding: 24px 10px;
+
+      color: #98a2b3;
+
+      text-align: center;
+    }
+
+    .item {
+      display: grid;
+
+      grid-template-columns: minmax(0, 1fr) auto;
+
+      gap: 12px;
+
+      padding: 14px 0;
+
+      border-bottom: 1px solid #eaecf0;
+    }
+
+    .item:last-child {
+      border-bottom: 0;
+    }
+
+    .item-name {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .item-details {
+      margin-top: 4px;
+
+      color: #667085;
+      font-size: 13px;
+    }
+
+    .item-barcode {
+      margin-top: 5px;
+
+      color: #98a2b3;
+      font-size: 11px;
+    }
+
+    .unknown {
+      color: #b42318;
+    }
+
+    .colour-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .colour-swatch {
+      width: 20px;
+      height: 20px;
+
+      flex: 0 0 20px;
+
+      border: 1px solid #cfd6df;
+      border-radius: 50%;
+
+      box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.25);
+    }
+
+    .quantity {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quantity button {
+      width: 40px;
+      height: 40px;
+
+      padding: 0;
+
+      border-radius: 50%;
+
+      font-size: 22px;
+      line-height: 1;
+
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .quantity-value {
+      min-width: 28px;
+
+      font-size: 18px;
+      font-weight: 800;
+
+      text-align: center;
+    }
+
+    .finish {
+      margin-top: 18px;
+    }
+
+    .message {
+      display: none;
+
+      margin-bottom: 16px;
+      padding: 13px;
+
+      border-radius: 12px;
+
+      font-size: 14px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.error {
+      border: 1px solid #fda29b;
+
+      background: #fef3f2;
+      color: #b42318;
+    }
+
+    .message.success {
+      border: 1px solid #6ce9a6;
+
+      background: #ecfdf3;
+      color: #027a48;
+    }
+
+    .message.info {
+      border: 1px solid #84caff;
+
+      background: #eff8ff;
+      color: #175cd3;
+    }
+
+    .success-screen {
+      text-align: center;
+    }
+
+    .success-icon {
+      margin-bottom: 12px;
+      font-size: 55px;
+    }
+
+    .success-screen h2 {
+      margin: 0 0 8px;
+    }
+
+    .success-details {
+      margin-bottom: 20px;
+
+      color: #667085;
+
+      line-height: 1.6;
+    }
+
+    .manual-button {
+      margin-top: 10px;
+      background: #7f56d9;
+    }
+
+    .step-label {
+      margin: 14px 0 8px;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2,minmax(0,1fr));
+      gap: 8px;
+    }
+
+    .choice {
+      background: white;
+      color: #344054;
+      border: 1px solid #d0d5dd;
+    }
+
+    .choice.active {
+      background: #eff8ff;
+      color: #004681;
+      border-color: #005bac;
+    }
+
+    .register-summary {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .two-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+  </style>
+</head>
+
+
+<body>
+
+  <main class="app">
+
+    <header class="header">
+
+      <h1>
+        S124 Filament Management
+      </h1>
+
+      <p>
+        Filament inventory scanner
+      </p>
+
+    </header>
+
+
+    <div
+      id="globalMessage"
+      class="message"
+    ></div>
+
+
+    <!-- LOGIN -->
+
+    <section
+      id="loginScreen"
+      class="card"
+    >
+
+      <label for="operatorName">
+        Name
+      </label>
+
+      <input
+        id="operatorName"
+        type="text"
+        autocomplete="name"
+        placeholder="Enter your name"
+      >
+
+
+      <label for="operatorPin">
+        PIN
+      </label>
+
+      <input
+        id="operatorPin"
+        type="password"
+        inputmode="numeric"
+        placeholder="Enter PIN"
+      >
+
+
+      <button
+        id="continueButton"
+        type="button"
+      >
+        Continue
+      </button>
+
+    </section>
+
+
+    <!-- ACTION -->
+
+    <section
+      id="actionScreen"
+      class="card hidden"
+    >
+
+      <div class="session-header">
+
+        <div>
+
+          <div class="session-title">
+            Select Action
+          </div>
+
+          <div
+            id="loggedInName"
+            class="session-operator"
+          ></div>
+
+        </div>
+
+      </div>
+
+
+      <div class="action-grid">
+
+        <button
+          id="scanInButton"
+          class="action-button"
+          type="button"
+        >
+          <span>📥</span>
+          Scan In
+        </button>
+
+
+        <button
+          id="scanOutButton"
+          class="action-button secondary"
+          type="button"
+        >
+          <span>📤</span>
+          Scan Out
+        </button>
+
+      </div>
+
+
+      <button
+        id="manualButton"
+        class="manual-button"
+        type="button"
+      >
+        Manual Third-Party Entry
+      </button>
+
+      <button
+        id="changeOperatorButton"
+        class="cancel"
+        type="button"
+      >
+        Change Operator
+      </button>
+
+    </section>
+
+
+    <!-- SCANNER -->
+
+    <section
+      id="scannerScreen"
+      class="card hidden"
+    >
+
+      <div class="session-header">
+
+        <div>
+
+          <div
+            id="sessionTitle"
+            class="session-title"
+          >
+            Scan In
+          </div>
+
+          <div
+            id="sessionOperator"
+            class="session-operator"
+          ></div>
+
+        </div>
+
+
+        <div
+          id="rollCount"
+          class="count-badge"
+        >
+          0 rolls
+        </div>
+
+      </div>
+
+
+      <div class="camera-wrap">
+
+        <video
+          id="video"
+          playsinline
+          muted
+        ></video>
+
+        <div class="scan-guide"></div>
+
+        <div class="scan-line"></div>
+
+      </div>
+
+
+      <div
+        id="scannerStatus"
+        class="status"
+      >
+        Starting camera...
+      </div>
+
+
+      <button
+        id="torchButton"
+        class="secondary torch-button"
+        type="button"
+        disabled
+      >
+        🔦 Torch Unavailable
+      </button>
+
+
+      <div
+        id="lastScan"
+        class="last-scan"
+      ></div>
+
+
+      <div
+        id="sessionList"
+        class="session-list"
+      >
+
+        <div class="empty">
+          Scan your first filament roll
+        </div>
+
+      </div>
+
+
+      <button
+        id="finishButton"
+        class="finish"
+        type="button"
+        disabled
+      >
+        Finish Session
+      </button>
+
+
+      <button
+        id="cancelSessionButton"
+        class="cancel"
+        type="button"
+      >
+        Cancel Session
+      </button>
+
+    </section>
+
+
+    <!-- REGISTER UNKNOWN BAMBU BARCODE -->
+
+    <section
+      id="registerScreen"
+      class="card hidden"
+    >
+      <div class="session-title">
+        Register Bambu Filament
+      </div>
+
+      <div
+        id="registerBarcode"
+        class="session-operator"
+      ></div>
+
+      <div class="step-label">Material</div>
+      <div id="materialChoices" class="choice-grid"></div>
+
+      <div class="step-label">Series</div>
+      <div id="seriesChoices" class="choice-grid"></div>
+
+      <div class="step-label">Colour</div>
+      <div id="colourChoices" class="choice-grid"></div>
+
+      <div class="step-label">Package</div>
+      <div id="packageChoices" class="choice-grid"></div>
+
+      <div
+        id="registerSummary"
+        class="register-summary"
+      >
+        Select a material.
+      </div>
+
+      <div class="two-actions">
+        <button
+          id="registerSaveButton"
+          type="button"
+          disabled
+        >
+          Register + Add
+        </button>
+
+        <button
+          id="registerCancelButton"
+          class="secondary"
+          type="button"
+        >
+          Cancel
+        </button>
+      </div>
+    </section>
+
+
+    <!-- MANUAL THIRD-PARTY -->
+
+    <section
+      id="manualScreen"
+      class="card hidden"
+    >
+      <div class="session-title">
+        Manual Third-Party Entry
+      </div>
+
+      <div class="session-operator">
+        No barcode will be added.
+      </div>
+
+      <br>
+
+      <label for="manualBrand">Brand</label>
+      <input id="manualBrand" type="text">
+
+      <label for="manualMaterial">Material</label>
+      <input id="manualMaterial" type="text" value="PLA">
+
+      <label for="manualSeries">Series / Type</label>
+      <input id="manualSeries" type="text">
+
+      <label for="manualColour">Colour</label>
+      <input id="manualColour" type="text">
+
+      <label for="manualHex">Hex</label>
+      <input id="manualHex" type="text" placeholder="#000000">
+
+      <label for="manualPackage">Package</label>
+      <select id="manualPackage">
+        <option>With Spool</option>
+        <option>Refill</option>
+        <option>Other</option>
+      </select>
+
+      <label for="manualQuantity">Quantity</label>
+      <input id="manualQuantity" type="number" min="1" value="1">
+
+      <label for="manualAction">Action</label>
+      <select id="manualAction">
+        <option value="IN">Scan In</option>
+        <option value="OUT">Scan Out</option>
+      </select>
+
+      <button
+        id="manualSaveButton"
+        type="button"
+      >
+        Save Manual Entry
+      </button>
+
+      <button
+        id="manualCancelButton"
+        class="cancel"
+        type="button"
+      >
+        Cancel
+      </button>
+    </section>
+
+
+    <!-- SUCCESS -->
+
+    <section
+      id="successScreen"
+      class="card success-screen hidden"
+    >
+
+      <div class="success-icon">
+        ✓
+      </div>
+
+      <h2>
+        Session Complete
+      </h2>
+
+      <div
+        id="successDetails"
+        class="success-details"
+      ></div>
+
+      <button
+        id="newSessionButton"
+        type="button"
+      >
+        New Session
+      </button>
+
+    </section>
+
+  </main>
+
+
+  <script>
+
+    const API_URL =
+      "https://script.google.com/macros/s/AKfycbxHVBl6Qr3w2u4F8ScHDhxnSMVImeRcZoldOAJ2Txc004kEExYCoROUgk1MbUzerQL9Qw/exec";
+
+
+    const SAME_BARCODE_COOLDOWN =
+      2500;
+
+
+    let operatorName = "";
+    let operatorPin = "";
+
+    let sessionAction = "";
+
+    let codeReader = null;
+    let scannerControls = null;
+
+    let scanning = false;
+
+    let sessionItems = {};
+
+    let lastBarcode = "";
+    let lastBarcodeTime = 0;
+
+    let activeVideoTrack = null;
+    let torchOn = false;
+
+    let catalogueItems = [];
+    let pendingBarcode = "";
+    let registration = {
+      material: "",
+      series: "",
+      colour: "",
+      colourCode: "",
+      packageType: "",
+      productId: ""
+    };
+
+
+    const $ =
+      id =>
+        document.getElementById(
+          id
+        );
+
+
+    /*
+     * BUTTON EVENTS
+     */
+
+    $("continueButton")
+      .addEventListener(
+        "click",
+        continueLogin
       );
-    }
 
-    if(action==="validatepin"){
-      const pinHash=String(e.parameter.pinHash||"").trim().toLowerCase();
-      return createApiResponse(
-        {success:true,valid:validatePinHash(pinHash)},
-        e
+
+    $("scanInButton")
+      .addEventListener(
+        "click",
+        () =>
+          startSession(
+            "IN"
+          )
       );
-    }
 
-    if(action==="catalogue"){
-      return createApiResponse(
-        {success:true,items:getCatalogueItems()},
-        e
+
+    $("scanOutButton")
+      .addEventListener(
+        "click",
+        () =>
+          startSession(
+            "OUT"
+          )
       );
-    }
 
-    if(action==="registerbarcode"){
-      validatePinHash(String(e.parameter.pinHash||"").trim().toLowerCase());
 
-      return createApiResponse(
-        registerBarcodeToProduct(
-          String(e.parameter.barcode||"").trim(),
-          String(e.parameter.productId||"").trim()
-        ),
-        e
+    $("manualButton")
+      .addEventListener(
+        "click",
+        () => showScreen("manualScreen")
       );
-    }
 
-    throw new Error("Unknown API action.");
-  }catch(error){
-    return createApiResponse(
-      {success:false,error:String(error.message||error)},
-      e
-    );
-  }
-}
 
-function doPost(e){
-  try{
-    let payload=null;
+    $("registerSaveButton")
+      .addEventListener(
+        "click",
+        saveRegistration
+      );
 
-    if(e?.parameter?.payload){
-      payload=JSON.parse(e.parameter.payload);
-    }else if(e?.postData?.contents){
-      payload=JSON.parse(e.postData.contents);
-    }
 
-    if(!payload){
-      throw new Error("No submission data received.");
-    }
+    $("registerCancelButton")
+      .addEventListener(
+        "click",
+        cancelRegistration
+      );
 
-    if(payload.manual===true){
-      return createJsonResponse(processManualFilament(payload));
-    }
 
-    return createJsonResponse(processFilamentSession(payload));
-  }catch(error){
-    console.error(error);
-    return createJsonResponse({
-      success:false,
-      error:String(error.message||error)
-    });
-  }
-}
+    $("manualSaveButton")
+      .addEventListener(
+        "click",
+        saveManualEntry
+      );
 
-function lookupFilament(barcode){
-  validateBarcode(barcode);
 
-  const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet=ss.getSheetByName(CATALOGUE_SHEET);
+    $("manualCancelButton")
+      .addEventListener(
+        "click",
+        () => showScreen("actionScreen")
+      );
 
-  if(!sheet){
-    throw new Error(`Sheet "${CATALOGUE_SHEET}" not found.`);
-  }
 
-  const product=getCatalogueMap(sheet)[barcode];
+    $("changeOperatorButton")
+      .addEventListener(
+        "click",
+        logout
+      );
 
-  if(!product){
-    return {success:true,found:false,barcode};
-  }
 
-  return {
-    success:true,
-    found:true,
-    product:{
-      productId:product.productId,
-      barcode:product.barcode,
-      brand:product.brand,
-      material:product.material,
-      series:product.series,
-      colour:product.colour,
-      colourCode:product.colourCode,
-      packageType:product.packageType,
-      weight:product.weight
-    }
-  };
-}
+    $("finishButton")
+      .addEventListener(
+        "click",
+        finishSession
+      );
 
-function processFilamentSession(payload){
-  const lock=LockService.getScriptLock();
 
-  try{
-    lock.waitLock(30000);
-    validateSession(payload);
-    validatePin(payload.pin);
+    $("cancelSessionButton")
+      .addEventListener(
+        "click",
+        cancelSession
+      );
 
-    const operator=String(payload.operator).trim();
-    const action=String(payload.action).trim().toUpperCase();
-    const consolidated={};
 
-    payload.items.forEach(item=>{
-      const barcode=String(item.barcode||"").trim();
-      validateBarcode(barcode);
+    $("newSessionButton")
+      .addEventListener(
+        "click",
+        newSession
+      );
 
-      const quantity=Number(item.quantity);
 
-      if(!Number.isInteger(quantity)||quantity<=0){
-        throw new Error(`Invalid quantity for ${barcode}.`);
-      }
+    $("torchButton")
+      .addEventListener(
+        "click",
+        toggleTorch
+      );
 
-      consolidated[barcode]=(consolidated[barcode]||0)+quantity;
-    });
 
-    const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
-    const inventorySheet=ss.getSheetByName(INVENTORY_SHEET);
-    const transactionSheet=ss.getSheetByName(TRANSACTIONS_SHEET);
-    const catalogueSheet=ss.getSheetByName(CATALOGUE_SHEET);
+    $("operatorPin")
+      .addEventListener(
+        "keydown",
+        event => {
 
-    if(!inventorySheet) throw new Error(`Sheet "${INVENTORY_SHEET}" not found.`);
-    if(!transactionSheet) throw new Error(`Sheet "${TRANSACTIONS_SHEET}" not found.`);
-    if(!catalogueSheet) throw new Error(`Sheet "${CATALOGUE_SHEET}" not found.`);
+          if (
+            event.key ===
+            "Enter"
+          ) {
 
-    const catalogue=getCatalogueMap(catalogueSheet);
-    const inventory=getInventoryMap(inventorySheet);
-    const barcodes=Object.keys(consolidated);
+            continueLogin();
 
-    barcodes.forEach(barcode=>{
-      const product=catalogue[barcode];
+          }
 
-      if(!product) throw new Error("Unknown filament barcode: "+barcode);
-      if(!product.active) throw new Error("Inactive filament barcode: "+barcode);
-
-      if(action==="OUT"){
-        const current=inventory[barcode]?.stock||0;
-        const requested=consolidated[barcode];
-
-        if(current<requested){
-          throw new Error(
-            product.material+" "+product.colour+
-            " only has "+current+" in stock. "+
-            requested+" requested."
-          );
         }
+      );
+
+
+    /*
+     * LOGIN
+     */
+
+    async function continueLogin() {
+
+      clearMessage();
+
+
+      const name =
+        $("operatorName")
+          .value
+          .trim();
+
+
+      const pin =
+        $("operatorPin")
+          .value
+          .trim();
+
+
+      if (!name) {
+
+        showMessage(
+          "Enter your name.",
+          "error"
+        );
+
+        return;
+
       }
-    });
 
-    const now=new Date();
-    const sessionId=createSessionId(now);
-    const transactionRows=[];
 
-    barcodes.forEach(barcode=>{
-      const product=catalogue[barcode];
-      const quantity=consolidated[barcode];
-      const existing=inventory[barcode];
-      const oldStock=existing?existing.stock:0;
-      const newStock=action==="IN"
-        ? oldStock+quantity
-        : oldStock-quantity;
+      if (!pin) {
 
-      if(existing){
-        inventorySheet.getRange(existing.row,7).setValue(newStock);
-        inventorySheet
-          .getRange(existing.row,9)
-          .setValue(now)
-          .setNumberFormat("dd mmm yyyy, hh:mm");
-      }else{
-        if(action!=="IN"){
-          throw new Error(
-            "Cannot scan out an item that does not exist in inventory."
+        showMessage(
+          "Enter the filament management PIN.",
+          "error"
+        );
+
+        return;
+
+      }
+
+
+      const button =
+        $("continueButton");
+
+
+      button.disabled =
+        true;
+
+
+      button.textContent =
+        "Checking PIN...";
+
+
+      try {
+
+        const pinHash =
+          await sha256Hex(
+            pin
           );
+
+
+        const result =
+          await jsonpRequest(
+
+            API_URL +
+            "?action=validatePin" +
+            "&pinHash=" +
+            encodeURIComponent(
+              pinHash
+            )
+
+          );
+
+
+        if (
+          !result ||
+          result.success !== true
+        ) {
+
+          throw new Error(
+            result?.error ||
+            "Unable to validate PIN."
+          );
+
         }
 
-        const productName=product.material+" "+product.colour;
 
-        inventorySheet.appendRow([
-          product.barcode,
-          product.brand,
-          product.material,
-          product.colour,
-          product.colourCode,
-          productName,
-          newStock,
-          0,
-          now,
-          product.packageType
-        ]);
+        if (
+          result.valid !== true
+        ) {
 
-        inventory[barcode]={
-          row:inventorySheet.getLastRow(),
-          stock:newStock
-        };
+          $("operatorPin")
+            .value =
+              "";
+
+
+          showMessage(
+            "Incorrect PIN.",
+            "error"
+          );
+
+
+          return;
+
+        }
+
+
+        operatorName =
+          name;
+
+
+        operatorPin =
+          pin;
+
+
+        $("loggedInName")
+          .textContent =
+            operatorName;
+
+
+        showScreen(
+          "actionScreen"
+        );
+
+        loadCatalogue()
+          .catch(
+            error => console.error(error)
+          );
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        showMessage(
+
+          "Unable to validate PIN: " +
+          String(
+            error.message ||
+            error
+          ),
+
+          "error"
+
+        );
+
+
+      } finally {
+
+        button.disabled =
+          false;
+
+
+        button.textContent =
+          "Continue";
+
       }
 
-      transactionRows.push([
-        now,
-        sessionId,
-        operator,
-        action,
-        barcode,
-        product.brand,
-        product.material,
-        product.colour,
-        product.packageType,
-        quantity,
-        newStock
-      ]);
-    });
+    }
 
-    if(transactionRows.length){
-      const startRow=transactionSheet.getLastRow()+1;
 
-      transactionSheet
-        .getRange(
-          startRow,
-          1,
-          transactionRows.length,
-          transactionRows[0].length
+    async function sha256Hex(
+      value
+    ) {
+
+      const data =
+        new TextEncoder()
+          .encode(
+            value
+          );
+
+
+      const digest =
+        await crypto.subtle.digest(
+          "SHA-256",
+          data
+        );
+
+
+      return Array
+        .from(
+          new Uint8Array(
+            digest
+          )
         )
-        .setValues(transactionRows);
+        .map(
+          byte =>
+            byte
+              .toString(16)
+              .padStart(
+                2,
+                "0"
+              )
+        )
+        .join(
+          ""
+        );
 
-      transactionSheet
-        .getRange(startRow,1,transactionRows.length,1)
-        .setNumberFormat("dd mmm yyyy, hh:mm");
     }
 
-    SpreadsheetApp.flush();
 
-    return {
-      success:true,
-      sessionId,
-      operator,
-      action,
-      uniqueItems:transactionRows.length,
-      totalRolls:transactionRows.reduce(
-        (total,row)=>total+Number(row[9]),
-        0
-      )
-    };
-  }finally{
-    if(lock.hasLock()) lock.releaseLock();
-  }
-}
+    /*
+     * START SESSION
+     */
 
-function processManualFilament(payload){
-  const lock=LockService.getScriptLock();
+    async function startSession(
+      action
+    ) {
 
-  try{
-    lock.waitLock(30000);
-    validatePin(payload.pin);
+      clearMessage();
 
-    const operator=String(payload.operator||"").trim();
-    const action=String(payload.action||"").trim().toUpperCase();
-    const item=payload.item||{};
 
-    if(!operator) throw new Error("Operator name is required.");
-    if(action!=="IN"&&action!=="OUT") throw new Error("Action must be IN or OUT.");
+      sessionAction =
+        action;
 
-    const brand=String(item.brand||"").trim();
-    const material=String(item.material||"").trim();
-    const series=String(item.series||"").trim();
-    const colour=String(item.colour||"").trim();
-    const colourCode=String(item.colourCode||"").trim();
-    const packageType=String(item.packageType||"With Spool").trim();
-    const quantity=Number(item.quantity);
 
-    if(!brand||!material||!colour){
-      throw new Error("Brand, material and colour are required.");
+      sessionItems =
+        {};
+
+
+      lastBarcode =
+        "";
+
+
+      lastBarcodeTime =
+        0;
+
+
+      $("sessionTitle")
+        .textContent =
+          action === "IN"
+            ? "📥 Scan In"
+            : "📤 Scan Out";
+
+
+      $("sessionOperator")
+        .textContent =
+          operatorName;
+
+
+      showScreen(
+        "scannerScreen"
+      );
+
+
+      renderSession();
+
+
+      await startScanner();
+
     }
 
-    if(!Number.isInteger(quantity)||quantity<=0){
-      throw new Error("Invalid quantity.");
-    }
 
-    const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
-    const catalogueSheet=ss.getSheetByName(CATALOGUE_SHEET);
-    const inventorySheet=ss.getSheetByName(INVENTORY_SHEET);
-    const transactionSheet=ss.getSheetByName(TRANSACTIONS_SHEET);
+    /*
+     * CAMERA
+     */
 
-    if(!catalogueSheet||!inventorySheet||!transactionSheet){
-      throw new Error("Filament sheets are missing.");
-    }
+    async function startScanner() {
 
-    const productId=[
-      "MAN",
-      brand,
-      material,
-      series,
-      colour,
-      packageType
-    ]
-      .map(value=>String(value||"").trim().toUpperCase().replace(/[^A-Z0-9]+/g,"-"))
-      .filter(Boolean)
-      .join("-");
+      try {
 
-    const invValues=inventorySheet.getDataRange().getValues();
-    let rowNumber=-1;
-    let currentStock=0;
+        scanning =
+          true;
 
-    for(let i=1;i<invValues.length;i++){
-      if(String(invValues[i][0]||"").trim()===productId){
-        rowNumber=i+1;
-        currentStock=Number(invValues[i][1]||0);
-        break;
+
+        torchOn =
+          false;
+
+
+        activeVideoTrack =
+          null;
+
+
+        $("torchButton")
+          .disabled =
+            true;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Checking Torch...";
+
+
+        $("scannerStatus")
+          .textContent =
+            "Starting rear camera...";
+
+
+        codeReader =
+          new ZXingBrowser
+            .BrowserMultiFormatReader();
+
+
+        scannerControls =
+          await codeReader
+            .decodeFromConstraints(
+
+              {
+                audio:
+                  false,
+
+                video: {
+
+                  facingMode: {
+                    ideal:
+                      "environment"
+                  },
+
+                  width: {
+                    ideal:
+                      1920
+                  },
+
+                  height: {
+                    ideal:
+                      1080
+                  }
+
+                }
+              },
+
+              $("video"),
+
+              handleScannerResult
+
+            );
+
+
+        $("scannerStatus")
+          .textContent =
+            "Scan filament barcodes";
+
+
+        setTimeout(
+          configureCamera,
+          700
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        scanning =
+          false;
+
+
+        $("scannerStatus")
+          .textContent =
+            "Unable to start camera";
+
+
+        $("torchButton")
+          .disabled =
+            true;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Torch Unavailable";
+
+
+        showMessage(
+
+          "Camera error: " +
+          String(
+            error
+          ),
+
+          "error"
+
+        );
+
       }
+
     }
 
-    const newStock=action==="IN"
-      ?currentStock+quantity
-      :currentStock-quantity;
 
-    if(newStock<0){
-      throw new Error("Not enough stock to scan out.");
-    }
+    async function configureCamera() {
 
-    const now=new Date();
-    const sessionId=createSessionId(now);
+      try {
 
-    if(rowNumber<0){
-      if(action==="OUT"){
-        throw new Error("Cannot scan out an item that does not exist in inventory.");
+        const video =
+          $("video");
+
+
+        if (
+          !video ||
+          !video.srcObject
+        ) {
+
+          return;
+
+        }
+
+
+        const tracks =
+          video
+            .srcObject
+            .getVideoTracks();
+
+
+        if (
+          !tracks ||
+          tracks.length === 0
+        ) {
+
+          return;
+
+        }
+
+
+        const track =
+          tracks[0];
+
+
+        activeVideoTrack =
+          track;
+
+
+        const capabilities =
+
+          typeof track.getCapabilities ===
+          "function"
+
+            ? track.getCapabilities()
+
+            : {};
+
+
+        /*
+         * AUTOFOCUS
+         */
+
+        if (
+          capabilities.focusMode &&
+          capabilities.focusMode.includes(
+            "continuous"
+          )
+        ) {
+
+          try {
+
+            await track
+              .applyConstraints({
+
+                advanced: [
+                  {
+                    focusMode:
+                      "continuous"
+                  }
+                ]
+
+              });
+
+
+          } catch (error) {
+
+            console.log(
+              "Continuous autofocus unavailable:",
+              error
+            );
+
+          }
+
+        }
+
+
+        /*
+         * TORCH
+         */
+
+        if (
+          capabilities.torch === true
+        ) {
+
+          $("torchButton")
+            .disabled =
+              false;
+
+
+          $("torchButton")
+            .textContent =
+              "🔦 Torch Off";
+
+
+        } else {
+
+          $("torchButton")
+            .disabled =
+              true;
+
+
+          $("torchButton")
+            .textContent =
+              "🔦 Torch Unavailable";
+
+        }
+
+
+      } catch (error) {
+
+        console.log(
+          "Camera configuration error:",
+          error
+        );
+
+
+        $("torchButton")
+          .disabled =
+            true;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Torch Unavailable";
+
       }
 
-      inventorySheet.appendRow([
-        productId,
-        newStock,
-        now
-      ]);
-    }else{
-      inventorySheet.getRange(rowNumber,2).setValue(newStock);
-      inventorySheet.getRange(rowNumber,3).setValue(now);
     }
 
-    transactionSheet.appendRow([
-      now,
-      sessionId,
-      operator,
-      action,
-      productId,
-      "",
-      quantity,
-      newStock,
-      "Manual third-party entry"
-    ]);
 
-    return {
-      success:true,
-      sessionId,
-      productId,
-      newStock
-    };
+    /*
+     * TORCH CONTROL
+     */
 
-  }finally{
-    if(lock.hasLock()) lock.releaseLock();
-  }
-}
+    async function toggleTorch() {
+
+      if (
+        !activeVideoTrack
+      ) {
+
+        return;
+
+      }
 
 
-function getCatalogueMap(sheet){
-  const catalogue={};
+      try {
 
-  if(sheet.getLastRow()<2) return catalogue;
+        const capabilities =
 
-  const values=sheet.getDataRange().getValues();
-  const headers=values[0].map(value=>String(value||"").trim());
+          typeof activeVideoTrack.getCapabilities ===
+          "function"
 
-  const indexOf=name=>headers.indexOf(name);
+            ? activeVideoTrack.getCapabilities()
 
-  const idx={
-    productId:indexOf("Product ID"),
-    brand:indexOf("Brand"),
-    material:indexOf("Material"),
-    series:indexOf("Series"),
-    colour:indexOf("Colour"),
-    colourCode:indexOf("Colour Code"),
-    packageType:indexOf("Package Type"),
-    weight:indexOf("Weight"),
-    barcode:indexOf("Barcode"),
-    active:indexOf("Active")
-  };
-
-  values.slice(1).forEach(row=>{
-    const barcode=idx.barcode>=0
-      ?String(row[idx.barcode]||"").trim()
-      :"";
-
-    if(!barcode) return;
-
-    catalogue[barcode]={
-      productId:idx.productId>=0?String(row[idx.productId]||"").trim():"",
-      barcode,
-      brand:idx.brand>=0?String(row[idx.brand]||"").trim():"",
-      material:idx.material>=0?String(row[idx.material]||"").trim():"",
-      series:idx.series>=0?String(row[idx.series]||"").trim():"",
-      colour:idx.colour>=0?String(row[idx.colour]||"").trim():"",
-      colourCode:idx.colourCode>=0?String(row[idx.colourCode]||"").trim():"",
-      packageType:idx.packageType>=0?String(row[idx.packageType]||"").trim():"",
-      weight:idx.weight>=0?String(row[idx.weight]||"").trim():"",
-      active:idx.active>=0?normaliseBoolean(row[idx.active]):true
-    };
-  });
-
-  return catalogue;
-}
+            : {};
 
 
-function getCatalogueItems(){
-  const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet=ss.getSheetByName(CATALOGUE_SHEET);
+        if (
+          capabilities.torch !== true
+        ) {
 
-  if(!sheet){
-    throw new Error(`Sheet "${CATALOGUE_SHEET}" not found.`);
-  }
+          showMessage(
+            "Torch is not supported on this camera.",
+            "error"
+          );
 
-  if(sheet.getLastRow()<2) return [];
+          return;
 
-  const values=sheet.getDataRange().getValues();
-  const headers=values[0].map(value=>String(value||"").trim());
-
-  const indexOf=name=>headers.indexOf(name);
-
-  const idx={
-    productId:indexOf("Product ID"),
-    brand:indexOf("Brand"),
-    material:indexOf("Material"),
-    series:indexOf("Series"),
-    colour:indexOf("Colour"),
-    colourCode:indexOf("Colour Code"),
-    packageType:indexOf("Package Type"),
-    weight:indexOf("Weight"),
-    active:indexOf("Active")
-  };
-
-  return values.slice(1)
-    .map(row=>({
-      productId:idx.productId>=0?String(row[idx.productId]||"").trim():"",
-      brand:idx.brand>=0?String(row[idx.brand]||"").trim():"",
-      material:idx.material>=0?String(row[idx.material]||"").trim():"",
-      series:idx.series>=0?String(row[idx.series]||"").trim():"",
-      colour:idx.colour>=0?String(row[idx.colour]||"").trim():"",
-      colourCode:idx.colourCode>=0?String(row[idx.colourCode]||"").trim():"",
-      packageType:idx.packageType>=0?String(row[idx.packageType]||"").trim():"",
-      weight:idx.weight>=0?String(row[idx.weight]||"").trim():"",
-      active:idx.active>=0?normaliseBoolean(row[idx.active]):true
-    }))
-    .filter(item=>item.productId&&item.active);
-}
+        }
 
 
-function registerBarcodeToProduct(barcode,productId){
-  validateBarcode(barcode);
+        const nextTorchState =
+          !torchOn;
 
-  const ss=SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet=ss.getSheetByName(CATALOGUE_SHEET);
 
-  if(!sheet){
-    throw new Error(`Sheet "${CATALOGUE_SHEET}" not found.`);
-  }
+        await activeVideoTrack
+          .applyConstraints({
 
-  const values=sheet.getDataRange().getValues();
-  const headers=values[0].map(value=>String(value||"").trim());
+            advanced: [
+              {
+                torch:
+                  nextTorchState
+              }
+            ]
 
-  const barcodeCol=headers.indexOf("Barcode");
-  const productIdCol=headers.indexOf("Product ID");
-  const brandCol=headers.indexOf("Brand");
-  const materialCol=headers.indexOf("Material");
-  const seriesCol=headers.indexOf("Series");
-  const colourCol=headers.indexOf("Colour");
-  const colourCodeCol=headers.indexOf("Colour Code");
-  const packageCol=headers.indexOf("Package Type");
-  const weightCol=headers.indexOf("Weight");
-  const activeCol=headers.indexOf("Active");
-  const sourceCol=headers.indexOf("Source");
-  const notesCol=headers.indexOf("Notes");
+          });
 
-  if(barcodeCol<0||productIdCol<0||packageCol<0){
-    throw new Error("Filament Catalogue is missing Product ID, Barcode or Package Type column.");
-  }
 
-  const existingMap=getCatalogueMap(sheet);
+        torchOn =
+          nextTorchState;
 
-  if(existingMap[barcode]){
-    throw new Error("Barcode already exists in catalogue.");
-  }
 
-  // Normal case: selected package variant already exists.
-  for(let i=1;i<values.length;i++){
-    const rowProductId=String(values[i][productIdCol]||"").trim();
+        $("torchButton")
+          .textContent =
 
-    if(rowProductId===productId){
-      sheet.getRange(i+1,barcodeCol+1).setValue(barcode);
-      SpreadsheetApp.flush();
+            torchOn
 
-      return {
-        success:true,
-        productId,
+              ? "🔦 Torch On"
+
+              : "🔦 Torch Off";
+
+
+      } catch (error) {
+
+        console.error(
+          "Torch error:",
+          error
+        );
+
+
+        torchOn =
+          false;
+
+
+        $("torchButton")
+          .textContent =
+            "🔦 Torch Off";
+
+
+        showMessage(
+          "Unable to control the camera torch.",
+          "error"
+        );
+
+      }
+
+    }
+
+
+    /*
+     * BARCODE DETECTION
+     */
+
+    function handleScannerResult(
+      result
+    ) {
+
+      if (
+        !result ||
+        !scanning
+      ) {
+
+        return;
+
+      }
+
+
+      const barcode =
+        String(
+          result.getText()
+        )
+          .trim();
+
+
+      if (
+        !/^\d{13}$/.test(
+          barcode
+        )
+      ) {
+
+        return;
+
+      }
+
+
+      const now =
+        Date.now();
+
+
+      if (
+        barcode === lastBarcode &&
+        now - lastBarcodeTime <
+          SAME_BARCODE_COOLDOWN
+      ) {
+
+        return;
+
+      }
+
+
+      lastBarcode =
+        barcode;
+
+
+      lastBarcodeTime =
+        now;
+
+
+      processScan(
         barcode
+      );
+
+    }
+
+
+    /*
+     * PROCESS SCAN
+     */
+
+    async function processScan(
+      barcode
+    ) {
+
+      barcode =
+        String(
+          barcode || ""
+        ).trim();
+
+
+      playBeep();
+
+
+      if (
+        sessionItems[
+          barcode
+        ]
+      ) {
+
+        sessionItems[
+          barcode
+        ].quantity++;
+
+
+        showLastScan(
+
+          sessionItems[
+            barcode
+          ].colour +
+
+          " ×" +
+
+          sessionItems[
+            barcode
+          ].quantity
+
+        );
+
+
+        renderSession();
+
+
+        return;
+
+      }
+
+
+      sessionItems[
+        barcode
+      ] = {
+
+        barcode:
+          barcode,
+
+        quantity:
+          1,
+
+        loading:
+          true,
+
+        found:
+          false,
+
+        brand:
+          "",
+
+        material:
+          "",
+
+        colour:
+          "Looking up...",
+
+        colourCode:
+          "",
+
+        packageType:
+          "",
+
+        weight:
+          ""
+
       };
-    }
-  }
-
-  // Missing package variant: clone the same filament identity and create it.
-  const requestedPackage=
-    productId.endsWith("-WITH-SPOOL")
-      ?"With Spool"
-      :productId.endsWith("-REFILL")
-        ?"Refill"
-        :"";
-
-  if(!requestedPackage){
-    throw new Error("Product ID not found.");
-  }
-
-  const baseProductId=
-    productId.replace(/-(WITH-SPOOL|REFILL)$/,"");
-
-  let sourceRow=null;
-
-  for(let i=1;i<values.length;i++){
-    const rowProductId=String(values[i][productIdCol]||"").trim();
-    const rowBaseProductId=
-      rowProductId.replace(/-(WITH-SPOOL|REFILL|UNKNOWN)$/,"");
-
-    if(rowBaseProductId===baseProductId){
-      sourceRow=values[i];
-      break;
-    }
-  }
-
-  if(!sourceRow){
-    throw new Error("Unable to find a matching catalogue product to create this package variant.");
-  }
-
-  const newRow=new Array(headers.length).fill("");
-
-  newRow[productIdCol]=productId;
-  if(brandCol>=0) newRow[brandCol]=sourceRow[brandCol];
-  if(materialCol>=0) newRow[materialCol]=sourceRow[materialCol];
-  if(seriesCol>=0) newRow[seriesCol]=sourceRow[seriesCol];
-  if(colourCol>=0) newRow[colourCol]=sourceRow[colourCol];
-  if(colourCodeCol>=0) newRow[colourCodeCol]=sourceRow[colourCodeCol];
-  newRow[packageCol]=requestedPackage;
-  if(weightCol>=0) newRow[weightCol]=sourceRow[weightCol];
-  newRow[barcodeCol]=barcode;
-  if(activeCol>=0) newRow[activeCol]=true;
-  if(sourceCol>=0) newRow[sourceCol]="Scanner Registration";
-  if(notesCol>=0) newRow[notesCol]="Package variant created automatically during barcode registration";
-
-  sheet.appendRow(newRow);
-  SpreadsheetApp.flush();
-
-  return {
-    success:true,
-    productId,
-    barcode,
-    created:true
-  };
-}
 
 
-function getInventoryMap(sheet){
-  const inventory={};
+      renderSession();
 
-  if(sheet.getLastRow()<2) return inventory;
 
-  const values=sheet
-    .getRange(2,1,sheet.getLastRow()-1,10)
-    .getValues();
+      try {
 
-  values.forEach((row,index)=>{
-    const barcode=String(row[0]||"").trim();
-    if(!barcode) return;
+        const result =
+          await lookupBarcode(
+            barcode
+          );
 
-    inventory[barcode]={
-      row:index+2,
-      stock:normaliseNumber(row[6])
-    };
-  });
 
-  return inventory;
-}
+        if (
+          result &&
+          result.success &&
+          result.found &&
+          result.product
+        ) {
 
-function validatePin(submittedPin){
-  const storedPin=PropertiesService
-    .getScriptProperties()
-    .getProperty("FILAMENT_PIN");
+          const product =
+            result.product;
 
-  if(!storedPin){
-    throw new Error("FILAMENT_PIN has not been configured.");
-  }
 
-  if(String(submittedPin||"")!==String(storedPin)){
-    throw new Error("Incorrect PIN.");
-  }
-}
+          sessionItems[
+            barcode
+          ] = {
 
-function validatePinHash(submittedHash){
-  const storedPin=PropertiesService
-    .getScriptProperties()
-    .getProperty("FILAMENT_PIN");
+            barcode:
+              barcode,
 
-  if(!storedPin){
-    throw new Error("FILAMENT_PIN has not been configured.");
-  }
+            quantity:
+              sessionItems[
+                barcode
+              ].quantity,
 
-  return String(submittedHash||"").trim().toLowerCase()===
-    sha256Hex(String(storedPin));
-}
+            loading:
+              false,
 
-function sha256Hex(value){
-  return Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    value,
-    Utilities.Charset.UTF_8
-  )
-  .map(byte=>{
-    const unsigned=byte<0?byte+256:byte;
-    return unsigned.toString(16).padStart(2,"0");
-  })
-  .join("");
-}
+            found:
+              true,
 
-function validateSession(payload){
-  if(!payload) throw new Error("No session data received.");
+            productId:
+              product.productId ||
+              "",
 
-  const operator=String(payload.operator||"").trim();
+            brand:
+              product.brand ||
+              "",
 
-  if(!operator) throw new Error("Operator name is required.");
-  if(operator.length>100) throw new Error("Operator name is too long.");
+            material:
+              product.material ||
+              "",
 
-  const action=String(payload.action||"").trim().toUpperCase();
+            series:
+              product.series ||
+              "",
 
-  if(action!=="IN"&&action!=="OUT"){
-    throw new Error("Action must be IN or OUT.");
-  }
+            colour:
+              product.colour ||
+              "",
 
-  if(!Array.isArray(payload.items)||payload.items.length===0){
-    throw new Error("No filament was scanned.");
-  }
+            colourCode:
+              product.colourCode ||
+              "",
 
-  if(payload.items.length>200){
-    throw new Error("Too many items in one session.");
-  }
-}
+            packageType:
+              product.packageType ||
+              "",
 
-function validateBarcode(barcode){
-  const clean=String(barcode||"").trim();
+            weight:
+              product.weight ||
+              ""
 
-  if(!/^\d{13}$/.test(clean)){
-    throw new Error("Invalid EAN-13 barcode: "+clean);
-  }
+          };
 
-  if(!isValidEan13(clean)){
-    throw new Error("EAN-13 checksum failed: "+clean);
-  }
-}
 
-function isValidEan13(barcode){
-  if(!/^\d{13}$/.test(barcode)) return false;
+          showLastScan(
 
-  let sum=0;
+            (
+              product.material ||
+              ""
+            ) +
 
-  for(let i=0;i<12;i++){
-    const digit=Number(barcode[i]);
-    sum+=i%2===0?digit:digit*3;
-  }
+            (
+              product.series
+                ? " · " + product.series
+                : ""
+            ) +
 
-  const checkDigit=(10-(sum%10))%10;
+            " · " +
 
-  return checkDigit===Number(barcode[12]);
-}
+            (
+              product.colour ||
+              barcode
+            )
 
-function createSessionId(date){
-  const timestamp=Utilities.formatDate(
-    date,
-    TIMEZONE,
-    "yyyyMMdd-HHmmss"
-  );
+          );
 
-  const random=Utilities
-    .getUuid()
-    .substring(0,4)
-    .toUpperCase();
 
-  return "FIL-"+timestamp+"-"+random;
-}
+        } else {
 
-function normaliseBoolean(value){
-  if(value===true) return true;
+          delete sessionItems[
+            barcode
+          ];
 
-  const clean=String(value||"").trim().toLowerCase();
+          await beginRegistration(
+            barcode
+          );
 
-  return (
-    clean==="true"||
-    clean==="yes"||
-    clean==="1"||
-    clean==="active"
-  );
-}
+          return;
 
-function normaliseNumber(value){
-  const number=Number(value);
-  return Number.isFinite(number)?number:0;
-}
+        }
 
-function createJsonResponse(data){
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
 
-function createApiResponse(data,e){
-  const prefix=e?.parameter?.prefix
-    ?String(e.parameter.prefix).trim()
-    :"";
+      } catch (error) {
 
-  if(prefix){
-    if(!/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(prefix)){
-      throw new Error("Invalid callback name.");
+        console.error(
+          error
+        );
+
+
+        sessionItems[
+          barcode
+        ].loading =
+          false;
+
+
+        sessionItems[
+          barcode
+        ].found =
+          false;
+
+
+        sessionItems[
+          barcode
+        ].colour =
+          "Lookup Failed";
+
+
+        showMessage(
+
+          "Unable to look up " +
+          barcode +
+          ".",
+
+          "error"
+
+        );
+
+      }
+
+
+      renderSession();
+
     }
 
-    return ContentService
-      .createTextOutput(prefix+"("+JSON.stringify(data)+");")
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
 
-  return createJsonResponse(data);
-}
+    async function loadCatalogue() {
+      const result =
+        await jsonpRequest(
+          API_URL +
+          "?action=catalogue"
+        );
+
+      if (
+        !result ||
+        result.success !== true ||
+        !Array.isArray(result.items)
+      ) {
+        throw new Error(
+          result?.error ||
+          "Unable to load catalogue."
+        );
+      }
+
+      catalogueItems =
+        result.items;
+    }
+
+
+    async function beginRegistration(
+      barcode
+    ) {
+      stopScanner();
+
+      if (
+        catalogueItems.length === 0
+      ) {
+        await loadCatalogue();
+      }
+
+      pendingBarcode =
+        barcode;
+
+      if (
+        sessionItems[
+          barcode
+        ]
+      ) {
+        delete sessionItems[
+          barcode
+        ];
+      }
+
+      registration = {
+        material: "",
+        series: "",
+        colour: "",
+        colourCode: "",
+        packageType: "",
+        productId: ""
+      };
+
+      $("registerBarcode")
+        .textContent =
+          barcode;
+
+      showScreen(
+        "registerScreen"
+      );
+
+      renderRegistration();
+    }
+
+
+    function renderRegistration() {
+      const materials =
+        [...new Set(
+          catalogueItems
+            .map(item => item.material)
+            .filter(Boolean)
+        )].sort();
+
+      renderChoices(
+        "materialChoices",
+        materials,
+        registration.material,
+        value => {
+          registration = {
+            material: value,
+            series: "",
+            colour: "",
+            colourCode: "",
+            packageType: "",
+            productId: ""
+          };
+          renderRegistration();
+        }
+      );
+
+      const materialItems =
+        catalogueItems.filter(
+          item =>
+            item.material ===
+            registration.material
+        );
+
+      const series =
+        [...new Set(
+          materialItems
+            .map(item => item.series)
+            .filter(Boolean)
+        )].sort();
+
+      renderChoices(
+        "seriesChoices",
+        series,
+        registration.series,
+        value => {
+          registration.series =
+            value;
+          registration.colour =
+            "";
+          registration.colourCode =
+            "";
+          registration.packageType =
+            "";
+          registration.productId =
+            "";
+          renderRegistration();
+        }
+      );
+
+      const seriesItems =
+        materialItems.filter(
+          item =>
+            item.series ===
+            registration.series
+        );
+
+      const colours = [];
+
+      seriesItems.forEach(item => {
+        if (
+          !colours.some(
+            colour =>
+              colour.colour === item.colour &&
+              colour.colourCode === item.colourCode
+          )
+        ) {
+          colours.push({
+            colour:
+              item.colour,
+            colourCode:
+              item.colourCode
+          });
+        }
+      });
+
+      $("colourChoices")
+        .innerHTML =
+          colours.map(
+            item => {
+              const active =
+                registration.colour ===
+                  item.colour &&
+                registration.colourCode ===
+                  item.colourCode;
+
+              return `
+                <button
+                  type="button"
+                  class="choice ${active ? "active" : ""}"
+                  data-colour="${escapeHtml(item.colour)}"
+                  data-hex="${escapeHtml(item.colourCode)}"
+                >
+                  ${escapeHtml(item.colour)}
+                </button>
+              `;
+            }
+          ).join("");
+
+      $("colourChoices")
+        .querySelectorAll(
+          ".choice"
+        )
+        .forEach(
+          button => {
+            button.addEventListener(
+              "click",
+              () => {
+                registration.colour =
+                  button.dataset.colour ||
+                  "";
+                registration.colourCode =
+                  button.dataset.hex ||
+                  "";
+                registration.packageType =
+                  "";
+                registration.productId =
+                  "";
+                renderRegistration();
+              }
+            );
+          }
+        );
+
+      const colourItems =
+        seriesItems.filter(
+          item =>
+            item.colour ===
+              registration.colour &&
+            item.colourCode ===
+              registration.colourCode
+        );
+
+      const packageOptions =
+        ["With Spool","Refill"]
+          .map(
+            packageType => {
+              const existing =
+                colourItems.find(
+                  item =>
+                    item.packageType ===
+                    packageType
+                );
+
+              if(existing){
+                return {
+                  packageType:
+                    packageType,
+                  productId:
+                    existing.productId
+                };
+              }
+
+              const source =
+                colourItems[0];
+
+              if(!source){
+                return null;
+              }
+
+              const baseProductId =
+                String(
+                  source.productId ||
+                  ""
+                ).replace(
+                  /-(WITH-SPOOL|REFILL|UNKNOWN)$/,
+                  ""
+                );
+
+              return {
+                packageType:
+                  packageType,
+                productId:
+                  baseProductId +
+                  (
+                    packageType ===
+                    "With Spool"
+                      ? "-WITH-SPOOL"
+                      : "-REFILL"
+                  )
+              };
+            }
+          )
+          .filter(Boolean);
+
+      $("packageChoices")
+        .innerHTML =
+          packageOptions.map(
+            item => `
+              <button
+                type="button"
+                class="choice ${
+                  registration.productId === item.productId
+                    ? "active"
+                    : ""
+                }"
+                data-product-id="${escapeHtml(item.productId)}"
+                data-package="${escapeHtml(item.packageType)}"
+              >
+                ${escapeHtml(item.packageType)}
+              </button>
+            `
+          ).join("");
+
+      $("packageChoices")
+        .querySelectorAll(
+          ".choice"
+        )
+        .forEach(
+          button => {
+            button.addEventListener(
+              "click",
+              () => {
+                registration.productId =
+                  button.dataset.productId ||
+                  "";
+                registration.packageType =
+                  button.dataset.package ||
+                  "";
+                renderRegistration();
+              }
+            );
+          }
+        );
+
+      const parts = [
+        registration.material,
+        registration.series,
+        registration.colour,
+        registration.packageType
+      ].filter(Boolean);
+
+      $("registerSummary")
+        .textContent =
+          parts.length
+            ? parts.join(" · ")
+            : "Select a material.";
+
+      $("registerSaveButton")
+        .disabled =
+          !registration.productId;
+    }
+
+
+    function renderChoices(
+      elementId,
+      values,
+      selected,
+      onSelect
+    ) {
+      const element =
+        $(elementId);
+
+      element.innerHTML =
+        values.map(
+          value => `
+            <button
+              type="button"
+              class="choice ${
+                value === selected
+                  ? "active"
+                  : ""
+              }"
+              data-value="${escapeHtml(value)}"
+            >
+              ${escapeHtml(value)}
+            </button>
+          `
+        ).join("");
+
+      element
+        .querySelectorAll(
+          ".choice"
+        )
+        .forEach(
+          button => {
+            button.addEventListener(
+              "click",
+              () =>
+                onSelect(
+                  button.dataset.value ||
+                  ""
+                )
+            );
+          }
+        );
+    }
+
+
+    async function saveRegistration() {
+      if (
+        !pendingBarcode ||
+        !registration.productId
+      ) {
+        return;
+      }
+
+      const pinHash =
+        await sha256Hex(
+          operatorPin
+        );
+
+      const result =
+        await jsonpRequest(
+          API_URL +
+          "?action=registerBarcode" +
+          "&barcode=" +
+          encodeURIComponent(
+            pendingBarcode
+          ) +
+          "&productId=" +
+          encodeURIComponent(
+            registration.productId
+          ) +
+          "&pinHash=" +
+          encodeURIComponent(
+            pinHash
+          )
+        );
+
+      if (
+        !result ||
+        result.success !== true
+      ) {
+        throw new Error(
+          result?.error ||
+          "Unable to register barcode."
+        );
+      }
+
+      const barcode =
+        pendingBarcode;
+
+      pendingBarcode =
+        "";
+
+      showScreen(
+        "scannerScreen"
+      );
+
+      await startScanner();
+
+      await processScan(
+        barcode
+      );
+    }
+
+
+    async function cancelRegistration() {
+      const cancelledBarcode =
+        pendingBarcode;
+
+      pendingBarcode =
+        "";
+
+      if (
+        cancelledBarcode &&
+        sessionItems[
+          cancelledBarcode
+        ]
+      ) {
+        delete sessionItems[
+          cancelledBarcode
+        ];
+      }
+
+      lastBarcode =
+        "";
+
+      lastBarcodeTime =
+        0;
+
+      showScreen(
+        "scannerScreen"
+      );
+
+      renderSession();
+
+      await startScanner();
+    }
+
+
+    async function saveManualEntry() {
+      clearMessage();
+
+      const payload = {
+        manual: true,
+        operator:
+          operatorName,
+        pin:
+          operatorPin,
+        action:
+          $("manualAction").value,
+        item: {
+          brand:
+            $("manualBrand")
+              .value
+              .trim(),
+          material:
+            $("manualMaterial")
+              .value
+              .trim(),
+          series:
+            $("manualSeries")
+              .value
+              .trim(),
+          colour:
+            $("manualColour")
+              .value
+              .trim(),
+          colourCode:
+            $("manualHex")
+              .value
+              .trim(),
+          packageType:
+            $("manualPackage")
+              .value,
+          quantity:
+            Number(
+              $("manualQuantity")
+                .value
+            )
+        }
+      };
+
+      const form =
+        new URLSearchParams();
+
+      form.append(
+        "payload",
+        JSON.stringify(
+          payload
+        )
+      );
+
+      const response =
+        await fetch(
+          API_URL,
+          {
+            method:
+              "POST",
+            body:
+              form
+          }
+        );
+
+      const result =
+        await response.json();
+
+      if (
+        !result.success
+      ) {
+        throw new Error(
+          result.error ||
+          "Manual entry failed."
+        );
+      }
+
+      $("successDetails")
+        .innerHTML =
+          "<strong>Manual " +
+          escapeHtml(
+            payload.action
+          ) +
+          "</strong><br>" +
+          escapeHtml(
+            String(
+              payload.item.quantity
+            )
+          ) +
+          " rolls<br>" +
+          "Stock " +
+          escapeHtml(
+            String(
+              result.newStock
+            )
+          );
+
+      showScreen(
+        "successScreen"
+      );
+    }
+
+
+    /*
+     * BEEP
+     */
+
+    function playBeep() {
+
+      try {
+
+        const AudioContextClass =
+          window.AudioContext ||
+          window.webkitAudioContext;
+
+
+        if (
+          !AudioContextClass
+        ) {
+
+          return;
+
+        }
+
+
+        const audioContext =
+          new AudioContextClass();
+
+
+        const oscillator =
+          audioContext
+            .createOscillator();
+
+
+        const gain =
+          audioContext
+            .createGain();
+
+
+        oscillator.type =
+          "square";
+
+
+        oscillator.frequency.value =
+          1200;
+
+
+        gain.gain
+          .setValueAtTime(
+            0.18,
+            audioContext.currentTime
+          );
+
+
+        oscillator.connect(
+          gain
+        );
+
+
+        gain.connect(
+          audioContext.destination
+        );
+
+
+        oscillator.start();
+
+
+        oscillator.stop(
+          audioContext.currentTime +
+          0.25
+        );
+
+
+        oscillator.onended =
+          () => {
+
+            audioContext.close();
+
+          };
+
+
+      } catch (error) {
+
+        console.log(
+          "Beep unavailable:",
+          error
+        );
+
+      }
+
+    }
+
+
+    /*
+     * LOOKUP
+     */
+
+    function lookupBarcode(
+      barcode
+    ) {
+
+      return jsonpRequest(
+
+        API_URL +
+        "?action=lookup" +
+        "&barcode=" +
+        encodeURIComponent(
+          barcode
+        )
+
+      );
+
+    }
+
+
+    /*
+     * JSONP
+     */
+
+    function jsonpRequest(
+      baseUrl
+    ) {
+
+      return new Promise(
+
+        (
+          resolve,
+          reject
+        ) => {
+
+          const callbackName =
+
+            "filamentCallback_" +
+
+            Date.now() +
+
+            "_" +
+
+            Math.floor(
+              Math.random() *
+              100000
+            );
+
+
+          const script =
+            document
+              .createElement(
+                "script"
+              );
+
+
+          const timeout =
+            setTimeout(
+
+              () => {
+
+                cleanup();
+
+
+                reject(
+                  new Error(
+                    "Request timed out."
+                  )
+                );
+
+              },
+
+              10000
+
+            );
+
+
+          function cleanup() {
+
+            clearTimeout(
+              timeout
+            );
+
+
+            if (
+              script.parentNode
+            ) {
+
+              script
+                .parentNode
+                .removeChild(
+                  script
+                );
+
+            }
+
+
+            try {
+
+              delete window[
+                callbackName
+              ];
+
+
+            } catch (error) {
+
+              window[
+                callbackName
+              ] =
+                undefined;
+
+            }
+
+          }
+
+
+          window[
+            callbackName
+          ] =
+            function(
+              response
+            ) {
+
+              cleanup();
+
+
+              resolve(
+                response
+              );
+
+            };
+
+
+          script.onerror =
+            function() {
+
+              cleanup();
+
+
+              reject(
+                new Error(
+                  "Request failed."
+                )
+              );
+
+            };
+
+
+          script.src =
+
+            baseUrl +
+
+            "&prefix=" +
+
+            encodeURIComponent(
+              callbackName
+            );
+
+
+          document
+            .body
+            .appendChild(
+              script
+            );
+
+        }
+
+      );
+
+    }
+
+
+    /*
+     * RENDER SESSION
+     */
+
+    function renderSession() {
+
+      const list =
+        $("sessionList");
+
+
+      const items =
+        Object.values(
+          sessionItems
+        );
+
+
+      const total =
+        items.reduce(
+
+          (
+            sum,
+            item
+          ) =>
+            sum +
+            item.quantity,
+
+          0
+
+        );
+
+
+      $("rollCount")
+        .textContent =
+
+          total +
+
+          (
+            total === 1
+              ? " roll"
+              : " rolls"
+          );
+
+
+      if (
+        items.length ===
+        0
+      ) {
+
+        list.innerHTML =
+
+          '<div class="empty">' +
+          'Scan your first filament roll' +
+          '</div>';
+
+
+        $("finishButton")
+          .disabled =
+            true;
+
+
+        return;
+
+      }
+
+
+      let hasProblem =
+        false;
+
+
+      list.innerHTML =
+
+        items
+          .map(
+
+            item => {
+
+              if (
+                item.loading ||
+                !item.found
+              ) {
+
+                hasProblem =
+                  true;
+
+              }
+
+
+              const nameClass =
+
+                item.found
+                  ? "item-name"
+                  : "item-name unknown";
+
+
+              let details =
+                "";
+
+
+              if (
+                item.loading
+              ) {
+
+                details =
+                  "Checking catalogue...";
+
+
+              } else if (
+                item.found
+              ) {
+
+                details =
+
+                  [
+                    item.material,
+                    item.series,
+                    item.packageType,
+                    item.weight
+                  ]
+                    .filter(
+                      Boolean
+                    )
+                    .join(
+                      " · "
+                    );
+
+
+              } else {
+
+                details =
+                  "Not found in Filament Catalogue";
+
+              }
+
+
+              const swatchColour =
+
+                item.colourCode &&
+                /^#[0-9A-Fa-f]{6}$/.test(
+                  item.colourCode
+                )
+
+                  ? item.colourCode
+
+                  : "#d0d5dd";
+
+
+              const cleanBarcode =
+                String(
+                  item.barcode ||
+                  ""
+                ).trim();
+
+
+              return `
+
+                <div class="item">
+
+                  <div>
+
+                    <div
+                      class="${nameClass} colour-row"
+                    >
+
+                      <span
+                        class="colour-swatch"
+                        style="background:${escapeHtml(
+                          swatchColour
+                        )};"
+                      ></span>
+
+                      <span>
+                        ${escapeHtml(
+                          item.colour
+                        )}
+                      </span>
+
+                    </div>
+
+
+                    <div class="item-details">
+
+                      ${escapeHtml(
+                        details
+                      )}
+
+                    </div>
+
+
+                    <div class="item-barcode">
+
+                      ${escapeHtml(
+                        cleanBarcode
+                      )}
+
+                    </div>
+
+                  </div>
+
+
+                  <div class="quantity">
+
+                    <button
+                      type="button"
+                      class="secondary qty-minus"
+                      data-barcode="${escapeHtml(
+                        cleanBarcode
+                      )}"
+                    >
+                      −
+                    </button>
+
+
+                    <div class="quantity-value">
+
+                      ${item.quantity}
+
+                    </div>
+
+
+                    <button
+                      type="button"
+                      class="qty-plus"
+                      data-barcode="${escapeHtml(
+                        cleanBarcode
+                      )}"
+                    >
+                      +
+                    </button>
+
+                  </div>
+
+                </div>
+
+              `;
+
+            }
+
+          )
+          .join(
+            ""
+          );
+
+
+      list
+        .querySelectorAll(
+          ".qty-minus"
+        )
+        .forEach(
+
+          button => {
+
+            button
+              .addEventListener(
+
+                "click",
+
+                event => {
+
+                  event.preventDefault();
+
+
+                  const barcode =
+                    String(
+                      button
+                        .dataset
+                        .barcode ||
+                      ""
+                    ).trim();
+
+
+                  changeQuantity(
+                    barcode,
+                    -1
+                  );
+
+                }
+
+              );
+
+          }
+
+        );
+
+
+      list
+        .querySelectorAll(
+          ".qty-plus"
+        )
+        .forEach(
+
+          button => {
+
+            button
+              .addEventListener(
+
+                "click",
+
+                event => {
+
+                  event.preventDefault();
+
+
+                  const barcode =
+                    String(
+                      button
+                        .dataset
+                        .barcode ||
+                      ""
+                    ).trim();
+
+
+                  changeQuantity(
+                    barcode,
+                    1
+                  );
+
+                }
+
+              );
+
+          }
+
+        );
+
+
+      $("finishButton")
+        .disabled =
+          hasProblem;
+
+    }
+
+
+    /*
+     * QUANTITY
+     */
+
+    function changeQuantity(
+      barcode,
+      change
+    ) {
+
+      barcode =
+        String(
+          barcode || ""
+        ).trim();
+
+
+      const item =
+        sessionItems[
+          barcode
+        ];
+
+
+      if (
+        !item
+      ) {
+
+        console.warn(
+          "Quantity item not found:",
+          barcode
+        );
+
+
+        return;
+
+      }
+
+
+      item.quantity +=
+        change;
+
+
+      if (
+        item.quantity <=
+        0
+      ) {
+
+        delete sessionItems[
+          barcode
+        ];
+
+      }
+
+
+      renderSession();
+
+    }
+
+
+    /*
+     * FINISH SESSION
+     */
+
+    async function finishSession() {
+
+      clearMessage();
+
+
+      const items =
+        Object.values(
+          sessionItems
+        );
+
+
+      if (
+        items.length ===
+        0
+      ) {
+
+        showMessage(
+          "No filament has been scanned.",
+          "error"
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        items.some(
+          item =>
+            !item.found ||
+            item.loading
+        )
+      ) {
+
+        showMessage(
+          "Resolve unknown filament before finishing.",
+          "error"
+        );
+
+
+        return;
+
+      }
+
+
+      stopScanner();
+
+
+      const button =
+        $("finishButton");
+
+
+      button.disabled =
+        true;
+
+
+      button.textContent =
+        "Submitting...";
+
+
+      const payload = {
+
+        operator:
+          operatorName,
+
+        pin:
+          operatorPin,
+
+        action:
+          sessionAction,
+
+        items:
+
+          items.map(
+
+            item => ({
+
+              barcode:
+                String(
+                  item.barcode ||
+                  ""
+                ).trim(),
+
+              quantity:
+                item.quantity
+
+            })
+
+          )
+
+      };
+
+
+      try {
+
+        const form =
+          new URLSearchParams();
+
+
+        form.append(
+
+          "payload",
+
+          JSON.stringify(
+            payload
+          )
+
+        );
+
+
+        const response =
+          await fetch(
+
+            API_URL,
+
+            {
+
+              method:
+                "POST",
+
+              body:
+                form
+
+            }
+
+          );
+
+
+        const result =
+          await response.json();
+
+
+        if (
+          !result.success
+        ) {
+
+          throw new Error(
+            result.error ||
+            "Session failed."
+          );
+
+        }
+
+
+        $("successDetails")
+          .innerHTML =
+
+            "<strong>" +
+
+            escapeHtml(
+
+              sessionAction ===
+                "IN"
+
+                ? "Scan In"
+
+                : "Scan Out"
+
+            ) +
+
+            "</strong><br>" +
+
+            escapeHtml(
+              String(
+                result.totalRolls
+              )
+            ) +
+
+            " rolls · " +
+
+            escapeHtml(
+              String(
+                result.uniqueItems
+              )
+            ) +
+
+            " filament types<br>" +
+
+            "Session " +
+
+            escapeHtml(
+              result.sessionId
+            );
+
+
+        showScreen(
+          "successScreen"
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        showMessage(
+
+          String(
+            error.message ||
+            error
+          ),
+
+          "error"
+
+        );
+
+
+        button.disabled =
+          false;
+
+
+        button.textContent =
+          "Finish Session";
+
+
+        await startScanner();
+
+      }
+
+    }
+
+
+    /*
+     * LAST SCAN
+     */
+
+    function showLastScan(
+      text
+    ) {
+
+      const element =
+        $("lastScan");
+
+
+      element.textContent =
+        "✓ " +
+        text;
+
+
+      element
+        .classList
+        .add(
+          "show"
+        );
+
+
+      clearTimeout(
+        showLastScan.timer
+      );
+
+
+      showLastScan.timer =
+        setTimeout(
+
+          () => {
+
+            element
+              .classList
+              .remove(
+                "show"
+              );
+
+          },
+
+          1200
+
+        );
+
+    }
+
+
+    /*
+     * STOP CAMERA
+     */
+
+    function stopScanner() {
+
+      scanning =
+        false;
+
+
+      /*
+       * Try switching torch off
+       * before stopping the track.
+       */
+
+      if (
+        activeVideoTrack &&
+        torchOn
+      ) {
+
+        try {
+
+          activeVideoTrack
+            .applyConstraints({
+
+              advanced: [
+                {
+                  torch:
+                    false
+                }
+              ]
+
+            });
+
+        } catch (error) {
+
+          console.log(
+            "Could not disable torch:",
+            error
+          );
+
+        }
+
+      }
+
+
+      torchOn =
+        false;
+
+
+      activeVideoTrack =
+        null;
+
+
+      $("torchButton")
+        .disabled =
+          true;
+
+
+      $("torchButton")
+        .textContent =
+          "🔦 Torch Unavailable";
+
+
+      if (
+        scannerControls
+      ) {
+
+        try {
+
+          scannerControls
+            .stop();
+
+
+        } catch (error) {
+
+          console.log(
+            error
+          );
+
+        }
+
+      }
+
+
+      scannerControls =
+        null;
+
+
+      const video =
+        $("video");
+
+
+      if (
+        video.srcObject
+      ) {
+
+        video
+          .srcObject
+          .getTracks()
+          .forEach(
+
+            track =>
+              track.stop()
+
+          );
+
+
+        video.srcObject =
+          null;
+
+      }
+
+    }
+
+
+    /*
+     * CANCEL
+     */
+
+    function cancelSession() {
+
+      if (
+        Object.keys(
+          sessionItems
+        ).length >
+        0
+      ) {
+
+        const confirmed =
+          confirm(
+            "Discard this scan session?"
+          );
+
+
+        if (
+          !confirmed
+        ) {
+
+          return;
+
+        }
+
+      }
+
+
+      stopScanner();
+
+
+      sessionItems =
+        {};
+
+
+      showScreen(
+        "actionScreen"
+      );
+
+    }
+
+
+    /*
+     * NEW SESSION
+     */
+
+    function newSession() {
+
+      sessionItems =
+        {};
+
+
+      sessionAction =
+        "";
+
+
+      $("finishButton")
+        .textContent =
+          "Finish Session";
+
+
+      showScreen(
+        "actionScreen"
+      );
+
+    }
+
+
+    /*
+     * LOGOUT
+     */
+
+    function logout() {
+
+      stopScanner();
+
+
+      operatorName =
+        "";
+
+
+      operatorPin =
+        "";
+
+
+      $("operatorName")
+        .value =
+          "";
+
+
+      $("operatorPin")
+        .value =
+          "";
+
+
+      showScreen(
+        "loginScreen"
+      );
+
+    }
+
+
+    /*
+     * SCREENS
+     */
+
+    function showScreen(
+      screenId
+    ) {
+
+      [
+        "loginScreen",
+        "actionScreen",
+        "scannerScreen",
+        "registerScreen",
+        "manualScreen",
+        "successScreen"
+      ]
+        .forEach(
+
+          id => {
+
+            $(id)
+              .classList
+              .add(
+                "hidden"
+              );
+
+          }
+
+        );
+
+
+      $(screenId)
+        .classList
+        .remove(
+          "hidden"
+        );
+
+    }
+
+
+    /*
+     * MESSAGES
+     */
+
+    function showMessage(
+      text,
+      type
+    ) {
+
+      const element =
+        $("globalMessage");
+
+
+      element.textContent =
+        text;
+
+
+      element.className =
+        "message show " +
+        type;
+
+    }
+
+
+    function clearMessage() {
+
+      const element =
+        $("globalMessage");
+
+
+      element.textContent =
+        "";
+
+
+      element.className =
+        "message";
+
+    }
+
+
+    /*
+     * HTML ESCAPE
+     */
+
+    function escapeHtml(
+      value
+    ) {
+
+      return String(
+        value ?? ""
+      )
+        .replace(
+          /&/g,
+          "&amp;"
+        )
+        .replace(
+          /</g,
+          "&lt;"
+        )
+        .replace(
+          />/g,
+          "&gt;"
+        )
+        .replace(
+          /"/g,
+          "&quot;"
+        )
+        .replace(
+          /'/g,
+          "&#039;"
+        );
+
+    }
+
+  </script>
+
+</body>
+
+</html>
