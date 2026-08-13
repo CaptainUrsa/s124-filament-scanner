@@ -78,7 +78,8 @@
       font-weight: 700;
     }
 
-    input {
+    input,
+    select {
       width: 100%;
 
       margin-bottom: 16px;
@@ -90,7 +91,8 @@
       font-size: 16px;
     }
 
-    input:focus {
+    input:focus,
+    select:focus {
       outline: 2px solid #84caff;
       border-color: #1570ef;
     }
@@ -441,6 +443,54 @@
 
       line-height: 1.6;
     }
+
+    .manual-button {
+      margin-top: 10px;
+      background: #7f56d9;
+    }
+
+    .step-label {
+      margin: 14px 0 8px;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2,minmax(0,1fr));
+      gap: 8px;
+    }
+
+    .choice {
+      background: white;
+      color: #344054;
+      border: 1px solid #d0d5dd;
+    }
+
+    .choice.active {
+      background: #eff8ff;
+      color: #004681;
+      border-color: #005bac;
+    }
+
+    .register-summary {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .two-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
   </style>
 </head>
 
@@ -557,6 +607,14 @@
 
       </div>
 
+
+      <button
+        id="manualButton"
+        class="manual-button"
+        type="button"
+      >
+        Manual Third-Party Entry
+      </button>
 
       <button
         id="changeOperatorButton"
@@ -677,6 +735,124 @@
     </section>
 
 
+    <!-- REGISTER UNKNOWN BAMBU BARCODE -->
+
+    <section
+      id="registerScreen"
+      class="card hidden"
+    >
+      <div class="session-title">
+        Register Bambu Filament
+      </div>
+
+      <div
+        id="registerBarcode"
+        class="session-operator"
+      ></div>
+
+      <div class="step-label">Material</div>
+      <div id="materialChoices" class="choice-grid"></div>
+
+      <div class="step-label">Series</div>
+      <div id="seriesChoices" class="choice-grid"></div>
+
+      <div class="step-label">Colour</div>
+      <div id="colourChoices" class="choice-grid"></div>
+
+      <div class="step-label">Package</div>
+      <div id="packageChoices" class="choice-grid"></div>
+
+      <div
+        id="registerSummary"
+        class="register-summary"
+      >
+        Select a material.
+      </div>
+
+      <div class="two-actions">
+        <button
+          id="registerSaveButton"
+          type="button"
+          disabled
+        >
+          Register + Add
+        </button>
+
+        <button
+          id="registerCancelButton"
+          class="secondary"
+          type="button"
+        >
+          Cancel
+        </button>
+      </div>
+    </section>
+
+
+    <!-- MANUAL THIRD-PARTY -->
+
+    <section
+      id="manualScreen"
+      class="card hidden"
+    >
+      <div class="session-title">
+        Manual Third-Party Entry
+      </div>
+
+      <div class="session-operator">
+        No barcode will be added.
+      </div>
+
+      <br>
+
+      <label for="manualBrand">Brand</label>
+      <input id="manualBrand" type="text">
+
+      <label for="manualMaterial">Material</label>
+      <input id="manualMaterial" type="text" value="PLA">
+
+      <label for="manualSeries">Series / Type</label>
+      <input id="manualSeries" type="text">
+
+      <label for="manualColour">Colour</label>
+      <input id="manualColour" type="text">
+
+      <label for="manualHex">Hex</label>
+      <input id="manualHex" type="text" placeholder="#000000">
+
+      <label for="manualPackage">Package</label>
+      <select id="manualPackage">
+        <option>With Spool</option>
+        <option>Refill</option>
+        <option>Other</option>
+      </select>
+
+      <label for="manualQuantity">Quantity</label>
+      <input id="manualQuantity" type="number" min="1" value="1">
+
+      <label for="manualAction">Action</label>
+      <select id="manualAction">
+        <option value="IN">Scan In</option>
+        <option value="OUT">Scan Out</option>
+      </select>
+
+      <button
+        id="manualSaveButton"
+        type="button"
+      >
+        Save Manual Entry
+      </button>
+
+      <button
+        id="manualCancelButton"
+        class="cancel"
+        type="button"
+      >
+        Cancel
+      </button>
+    </section>
+
+
     <!-- SUCCESS -->
 
     <section
@@ -737,6 +913,17 @@
     let activeVideoTrack = null;
     let torchOn = false;
 
+    let catalogueItems = [];
+    let pendingBarcode = "";
+    let registration = {
+      material: "",
+      series: "",
+      colour: "",
+      colourCode: "",
+      packageType: "",
+      productId: ""
+    };
+
 
     const $ =
       id =>
@@ -773,6 +960,41 @@
           startSession(
             "OUT"
           )
+      );
+
+
+    $("manualButton")
+      .addEventListener(
+        "click",
+        () => showScreen("manualScreen")
+      );
+
+
+    $("registerSaveButton")
+      .addEventListener(
+        "click",
+        saveRegistration
+      );
+
+
+    $("registerCancelButton")
+      .addEventListener(
+        "click",
+        cancelRegistration
+      );
+
+
+    $("manualSaveButton")
+      .addEventListener(
+        "click",
+        saveManualEntry
+      );
+
+
+    $("manualCancelButton")
+      .addEventListener(
+        "click",
+        () => showScreen("actionScreen")
       );
 
 
@@ -956,6 +1178,11 @@
         showScreen(
           "actionScreen"
         );
+
+        loadCatalogue()
+          .catch(
+            error => console.error(error)
+          );
 
 
       } catch (error) {
@@ -1649,12 +1876,20 @@
             found:
               true,
 
+            productId:
+              product.productId ||
+              "",
+
             brand:
               product.brand ||
               "",
 
             material:
               product.material ||
+              "",
+
+            series:
+              product.series ||
               "",
 
             colour:
@@ -1683,6 +1918,12 @@
               ""
             ) +
 
+            (
+              product.series
+                ? " · " + product.series
+                : ""
+            ) +
+
             " · " +
 
             (
@@ -1695,32 +1936,15 @@
 
         } else {
 
-          sessionItems[
+          delete sessionItems[
             barcode
-          ].loading =
-            false;
+          ];
 
-
-          sessionItems[
+          await beginRegistration(
             barcode
-          ].found =
-            false;
-
-
-          sessionItems[
-            barcode
-          ].colour =
-            "Unknown Filament";
-
-
-          showMessage(
-
-            "Unknown barcode: " +
-            barcode,
-
-            "error"
-
           );
+
+          return;
 
         }
 
@@ -1765,6 +1989,482 @@
 
       renderSession();
 
+    }
+
+
+    async function loadCatalogue() {
+      const result =
+        await jsonpRequest(
+          API_URL +
+          "?action=catalogue"
+        );
+
+      if (
+        !result ||
+        result.success !== true ||
+        !Array.isArray(result.items)
+      ) {
+        throw new Error(
+          result?.error ||
+          "Unable to load catalogue."
+        );
+      }
+
+      catalogueItems =
+        result.items;
+    }
+
+
+    async function beginRegistration(
+      barcode
+    ) {
+      stopScanner();
+
+      if (
+        catalogueItems.length === 0
+      ) {
+        await loadCatalogue();
+      }
+
+      pendingBarcode =
+        barcode;
+
+      registration = {
+        material: "",
+        series: "",
+        colour: "",
+        colourCode: "",
+        packageType: "",
+        productId: ""
+      };
+
+      $("registerBarcode")
+        .textContent =
+          barcode;
+
+      showScreen(
+        "registerScreen"
+      );
+
+      renderRegistration();
+    }
+
+
+    function renderRegistration() {
+      const materials =
+        [...new Set(
+          catalogueItems
+            .map(item => item.material)
+            .filter(Boolean)
+        )].sort();
+
+      renderChoices(
+        "materialChoices",
+        materials,
+        registration.material,
+        value => {
+          registration = {
+            material: value,
+            series: "",
+            colour: "",
+            colourCode: "",
+            packageType: "",
+            productId: ""
+          };
+          renderRegistration();
+        }
+      );
+
+      const materialItems =
+        catalogueItems.filter(
+          item =>
+            item.material ===
+            registration.material
+        );
+
+      const series =
+        [...new Set(
+          materialItems
+            .map(item => item.series)
+            .filter(Boolean)
+        )].sort();
+
+      renderChoices(
+        "seriesChoices",
+        series,
+        registration.series,
+        value => {
+          registration.series =
+            value;
+          registration.colour =
+            "";
+          registration.colourCode =
+            "";
+          registration.packageType =
+            "";
+          registration.productId =
+            "";
+          renderRegistration();
+        }
+      );
+
+      const seriesItems =
+        materialItems.filter(
+          item =>
+            item.series ===
+            registration.series
+        );
+
+      const colours = [];
+
+      seriesItems.forEach(item => {
+        if (
+          !colours.some(
+            colour =>
+              colour.colour === item.colour &&
+              colour.colourCode === item.colourCode
+          )
+        ) {
+          colours.push({
+            colour:
+              item.colour,
+            colourCode:
+              item.colourCode
+          });
+        }
+      });
+
+      $("colourChoices")
+        .innerHTML =
+          colours.map(
+            item => {
+              const active =
+                registration.colour ===
+                  item.colour &&
+                registration.colourCode ===
+                  item.colourCode;
+
+              return `
+                <button
+                  type="button"
+                  class="choice ${active ? "active" : ""}"
+                  data-colour="${escapeHtml(item.colour)}"
+                  data-hex="${escapeHtml(item.colourCode)}"
+                >
+                  ${escapeHtml(item.colour)}
+                </button>
+              `;
+            }
+          ).join("");
+
+      $("colourChoices")
+        .querySelectorAll(
+          ".choice"
+        )
+        .forEach(
+          button => {
+            button.addEventListener(
+              "click",
+              () => {
+                registration.colour =
+                  button.dataset.colour ||
+                  "";
+                registration.colourCode =
+                  button.dataset.hex ||
+                  "";
+                registration.packageType =
+                  "";
+                registration.productId =
+                  "";
+                renderRegistration();
+              }
+            );
+          }
+        );
+
+      const colourItems =
+        seriesItems.filter(
+          item =>
+            item.colour ===
+              registration.colour &&
+            item.colourCode ===
+              registration.colourCode
+        );
+
+      $("packageChoices")
+        .innerHTML =
+          colourItems.map(
+            item => `
+              <button
+                type="button"
+                class="choice ${
+                  registration.productId === item.productId
+                    ? "active"
+                    : ""
+                }"
+                data-product-id="${escapeHtml(item.productId)}"
+                data-package="${escapeHtml(item.packageType)}"
+              >
+                ${escapeHtml(item.packageType)}
+              </button>
+            `
+          ).join("");
+
+      $("packageChoices")
+        .querySelectorAll(
+          ".choice"
+        )
+        .forEach(
+          button => {
+            button.addEventListener(
+              "click",
+              () => {
+                registration.productId =
+                  button.dataset.productId ||
+                  "";
+                registration.packageType =
+                  button.dataset.package ||
+                  "";
+                renderRegistration();
+              }
+            );
+          }
+        );
+
+      const parts = [
+        registration.material,
+        registration.series,
+        registration.colour,
+        registration.packageType
+      ].filter(Boolean);
+
+      $("registerSummary")
+        .textContent =
+          parts.length
+            ? parts.join(" · ")
+            : "Select a material.";
+
+      $("registerSaveButton")
+        .disabled =
+          !registration.productId;
+    }
+
+
+    function renderChoices(
+      elementId,
+      values,
+      selected,
+      onSelect
+    ) {
+      const element =
+        $(elementId);
+
+      element.innerHTML =
+        values.map(
+          value => `
+            <button
+              type="button"
+              class="choice ${
+                value === selected
+                  ? "active"
+                  : ""
+              }"
+              data-value="${escapeHtml(value)}"
+            >
+              ${escapeHtml(value)}
+            </button>
+          `
+        ).join("");
+
+      element
+        .querySelectorAll(
+          ".choice"
+        )
+        .forEach(
+          button => {
+            button.addEventListener(
+              "click",
+              () =>
+                onSelect(
+                  button.dataset.value ||
+                  ""
+                )
+            );
+          }
+        );
+    }
+
+
+    async function saveRegistration() {
+      if (
+        !pendingBarcode ||
+        !registration.productId
+      ) {
+        return;
+      }
+
+      const pinHash =
+        await sha256Hex(
+          operatorPin
+        );
+
+      const result =
+        await jsonpRequest(
+          API_URL +
+          "?action=registerBarcode" +
+          "&barcode=" +
+          encodeURIComponent(
+            pendingBarcode
+          ) +
+          "&productId=" +
+          encodeURIComponent(
+            registration.productId
+          ) +
+          "&pinHash=" +
+          encodeURIComponent(
+            pinHash
+          )
+        );
+
+      if (
+        !result ||
+        result.success !== true
+      ) {
+        throw new Error(
+          result?.error ||
+          "Unable to register barcode."
+        );
+      }
+
+      const barcode =
+        pendingBarcode;
+
+      pendingBarcode =
+        "";
+
+      showScreen(
+        "scannerScreen"
+      );
+
+      await startScanner();
+
+      await processScan(
+        barcode
+      );
+    }
+
+
+    async function cancelRegistration() {
+      pendingBarcode =
+        "";
+
+      showScreen(
+        "scannerScreen"
+      );
+
+      await startScanner();
+    }
+
+
+    async function saveManualEntry() {
+      clearMessage();
+
+      const payload = {
+        manual: true,
+        operator:
+          operatorName,
+        pin:
+          operatorPin,
+        action:
+          $("manualAction").value,
+        item: {
+          brand:
+            $("manualBrand")
+              .value
+              .trim(),
+          material:
+            $("manualMaterial")
+              .value
+              .trim(),
+          series:
+            $("manualSeries")
+              .value
+              .trim(),
+          colour:
+            $("manualColour")
+              .value
+              .trim(),
+          colourCode:
+            $("manualHex")
+              .value
+              .trim(),
+          packageType:
+            $("manualPackage")
+              .value,
+          quantity:
+            Number(
+              $("manualQuantity")
+                .value
+            )
+        }
+      };
+
+      const form =
+        new URLSearchParams();
+
+      form.append(
+        "payload",
+        JSON.stringify(
+          payload
+        )
+      );
+
+      const response =
+        await fetch(
+          API_URL,
+          {
+            method:
+              "POST",
+            body:
+              form
+          }
+        );
+
+      const result =
+        await response.json();
+
+      if (
+        !result.success
+      ) {
+        throw new Error(
+          result.error ||
+          "Manual entry failed."
+        );
+      }
+
+      $("successDetails")
+        .innerHTML =
+          "<strong>Manual " +
+          escapeHtml(
+            payload.action
+          ) +
+          "</strong><br>" +
+          escapeHtml(
+            String(
+              payload.item.quantity
+            )
+          ) +
+          " rolls<br>" +
+          "Stock " +
+          escapeHtml(
+            String(
+              result.newStock
+            )
+          );
+
+      showScreen(
+        "successScreen"
+      );
     }
 
 
@@ -2146,6 +2846,7 @@
 
                   [
                     item.material,
+                    item.series,
                     item.packageType,
                     item.weight
                   ]
@@ -2930,6 +3631,8 @@
         "loginScreen",
         "actionScreen",
         "scannerScreen",
+        "registerScreen",
+        "manualScreen",
         "successScreen"
       ]
         .forEach(
