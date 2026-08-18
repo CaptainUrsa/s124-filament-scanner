@@ -475,6 +475,25 @@
       border-color: #005bac;
     }
 
+    .choice-with-swatch {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .choice-swatch {
+      width: 22px;
+      height: 22px;
+      flex: 0 0 22px;
+      border: 1px solid #cfd6df;
+      border-radius: 50%;
+      box-shadow:
+        inset 0 0 0 1px
+        rgba(255, 255, 255, 0.25);
+    }
+
     .register-summary {
       margin-top: 12px;
       padding: 10px;
@@ -818,7 +837,7 @@
       <input id="manualColour" type="text">
 
       <label for="manualHex">Hex</label>
-      <input id="manualHex" type="text" placeholder="#000000">
+      <input id="manualHex" type="text" placeholder="#000000 or #FF0000,#0000FF">
 
       <label for="manualPackage">Package</label>
       <select id="manualPackage">
@@ -930,6 +949,54 @@
         document.getElementById(
           id
         );
+
+
+    function getColourStops(
+      colourCode
+    ) {
+      return String(
+        colourCode || ""
+      )
+        .split(",")
+        .map(
+          value =>
+            value.trim()
+        )
+        .filter(
+          value =>
+            /^#[0-9A-Fa-f]{6}$/.test(
+              value
+            )
+        );
+    }
+
+
+    function getColourBackground(
+      colourCode
+    ) {
+      const colours =
+        getColourStops(
+          colourCode
+        );
+
+      if (
+        colours.length === 0
+      ) {
+        return "#d0d5dd";
+      }
+
+      if (
+        colours.length === 1
+      ) {
+        return colours[0];
+      }
+
+      return (
+        "linear-gradient(90deg, " +
+        colours.join(", ") +
+        ")"
+      );
+    }
 
 
     /*
@@ -2157,11 +2224,21 @@
               return `
                 <button
                   type="button"
-                  class="choice ${active ? "active" : ""}"
+                  class="choice choice-with-swatch ${active ? "active" : ""}"
                   data-colour="${escapeHtml(item.colour)}"
                   data-hex="${escapeHtml(item.colourCode)}"
                 >
-                  ${escapeHtml(item.colour)}
+                  <span
+                    class="choice-swatch"
+                    style="background:${escapeHtml(
+                      getColourBackground(
+                        item.colourCode
+                      )
+                    )};"
+                  ></span>
+                  <span>
+                    ${escapeHtml(item.colour)}
+                  </span>
                 </button>
               `;
             }
@@ -2300,11 +2377,44 @@
         registration.packageType
       ].filter(Boolean);
 
-      $("registerSummary")
-        .textContent =
-          parts.length
-            ? parts.join(" · ")
-            : "Select a material.";
+      if (
+        parts.length
+      ) {
+        const summaryText =
+          parts.join(" · ");
+
+        if (
+          registration.colour &&
+          registration.colourCode
+        ) {
+          $("registerSummary")
+            .innerHTML = `
+              <div class="colour-row">
+                <span
+                  class="colour-swatch"
+                  style="background:${escapeHtml(
+                    getColourBackground(
+                      registration.colourCode
+                    )
+                  )};"
+                ></span>
+                <span>
+                  ${escapeHtml(
+                    summaryText
+                  )}
+                </span>
+              </div>
+            `;
+        } else {
+          $("registerSummary")
+            .textContent =
+              summaryText;
+        }
+      } else {
+        $("registerSummary")
+          .textContent =
+            "Select a material.";
+      }
 
       $("registerSaveButton")
         .disabled =
@@ -2951,15 +3061,9 @@
 
 
               const swatchColour =
-
-                item.colourCode &&
-                /^#[0-9A-Fa-f]{6}$/.test(
+                getColourBackground(
                   item.colourCode
-                )
-
-                  ? item.colourCode
-
-                  : "#d0d5dd";
+                );
 
 
               const cleanBarcode =
@@ -2981,6 +3085,9 @@
 
                       <span
                         class="colour-swatch"
+                        title="${escapeHtml(
+                          item.colourCode || ""
+                        )}"
                         style="background:${escapeHtml(
                           swatchColour
                         )};"
