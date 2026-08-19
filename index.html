@@ -913,6 +913,9 @@
     const SAME_BARCODE_COOLDOWN =
       2500;
 
+    const API_REQUEST_TIMEOUT =
+      30000;
+
 
     let operatorName = "";
     let operatorPin = "";
@@ -2826,7 +2829,7 @@
 
               },
 
-              10000
+              API_REQUEST_TIMEOUT
 
             );
 
