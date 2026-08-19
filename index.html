@@ -916,11 +916,24 @@
     const API_REQUEST_TIMEOUT =
       30000;
 
+    const BARCODE_CACHE_KEY =
+      "s124FilamentBarcodeCacheV1";
+
+    const BARCODE_CACHE_MAX_AGE =
+      7 * 24 * 60 * 60 * 1000;
+
+    const BARCODE_CACHE_MAX_ITEMS =
+      500;
+
 
     let operatorName = "";
     let operatorPin = "";
+    let operatorPinHash = "";
 
     let sessionAction = "";
+    let sessionSubmitting = false;
+    let registrationSubmitting = false;
+    let manualSubmitting = false;
 
     let codeReader = null;
     let scannerControls = null;
@@ -936,6 +949,8 @@
     let torchOn = false;
 
     let catalogueItems = [];
+    let barcodeCache =
+      loadBarcodeCache();
     let pendingBarcode = "";
     let registration = {
       material: "",
@@ -1240,6 +1255,10 @@
           pin;
 
 
+        operatorPinHash =
+          pinHash;
+
+
         $("loggedInName")
           .textContent =
             operatorName;
@@ -1250,6 +1269,12 @@
         );
 
         loadCatalogue()
+          .catch(
+            error => console.error(error)
+          );
+
+
+        loadBarcodeMap()
           .catch(
             error => console.error(error)
           );
@@ -1338,6 +1363,10 @@
     ) {
 
       clearMessage();
+
+
+      sessionSubmitting =
+        false;
 
 
       sessionAction =
@@ -1909,6 +1938,30 @@
       renderSession();
 
 
+      const cachedProduct =
+        getCachedBarcodeProduct(
+          barcode
+        );
+
+
+      if (
+        cachedProduct
+      ) {
+
+        setResolvedSessionItem(
+          barcode,
+          cachedProduct
+        );
+
+
+        renderSession();
+
+
+        return;
+
+      }
+
+
       try {
 
         const result =
@@ -1928,79 +1981,15 @@
             result.product;
 
 
-          sessionItems[
-            barcode
-          ] = {
-
-            barcode:
-              barcode,
-
-            quantity:
-              sessionItems[
-                barcode
-              ].quantity,
-
-            loading:
-              false,
-
-            found:
-              true,
-
-            productId:
-              product.productId ||
-              "",
-
-            brand:
-              product.brand ||
-              "",
-
-            material:
-              product.material ||
-              "",
-
-            series:
-              product.series ||
-              "",
-
-            colour:
-              product.colour ||
-              "",
-
-            colourCode:
-              product.colourCode ||
-              "",
-
-            packageType:
-              product.packageType ||
-              "",
-
-            weight:
-              product.weight ||
-              ""
-
-          };
+          cacheBarcodeProduct(
+            barcode,
+            product
+          );
 
 
-          showLastScan(
-
-            (
-              product.material ||
-              ""
-            ) +
-
-            (
-              product.series
-                ? " · " + product.series
-                : ""
-            ) +
-
-            " · " +
-
-            (
-              product.colour ||
-              barcode
-            )
-
+          setResolvedSessionItem(
+            barcode,
+            product
           );
 
 
@@ -2062,6 +2051,297 @@
     }
 
 
+    function setResolvedSessionItem(
+      barcode,
+      product
+    ) {
+
+      const currentItem =
+        sessionItems[
+          barcode
+        ];
+
+
+      if (
+        !currentItem
+      ) {
+
+        return;
+
+      }
+
+
+      sessionItems[
+        barcode
+      ] = {
+
+        barcode:
+          barcode,
+
+        quantity:
+          currentItem.quantity,
+
+        loading:
+          false,
+
+        found:
+          true,
+
+        productId:
+          product.productId ||
+          "",
+
+        brand:
+          product.brand ||
+          "",
+
+        material:
+          product.material ||
+          "",
+
+        series:
+          product.series ||
+          "",
+
+        colour:
+          product.colour ||
+          "",
+
+        colourCode:
+          product.colourCode ||
+          "",
+
+        packageType:
+          product.packageType ||
+          "",
+
+        weight:
+          product.weight ||
+          ""
+
+      };
+
+
+      showLastScan(
+
+        (
+          product.material ||
+          ""
+        ) +
+
+        (
+          product.series
+            ? " · " + product.series
+            : ""
+        ) +
+
+        " · " +
+
+        (
+          product.colour ||
+          barcode
+        )
+
+      );
+
+    }
+
+
+    function loadBarcodeCache() {
+
+      try {
+
+        const stored =
+          JSON.parse(
+            localStorage.getItem(
+              BARCODE_CACHE_KEY
+            ) ||
+            "{}"
+          );
+
+
+        if (
+          stored &&
+          typeof stored === "object" &&
+          !Array.isArray(stored)
+        ) {
+
+          return stored;
+
+        }
+
+      } catch (error) {
+
+        console.warn(
+          "Unable to load barcode cache:",
+          error
+        );
+
+      }
+
+
+      return {};
+
+    }
+
+
+    function getCachedBarcodeProduct(
+      barcode
+    ) {
+
+      const entry =
+        barcodeCache[
+          barcode
+        ];
+
+
+      if (
+        !entry ||
+        !entry.product ||
+        !entry.cachedAt ||
+        Date.now() - entry.cachedAt >
+          BARCODE_CACHE_MAX_AGE
+      ) {
+
+        if (
+          entry
+        ) {
+
+          delete barcodeCache[
+            barcode
+          ];
+
+
+          saveBarcodeCache();
+
+        }
+
+
+        return null;
+
+      }
+
+
+      return entry.product;
+
+    }
+
+
+    function cacheBarcodeProduct(
+      barcode,
+      product
+    ) {
+
+      barcodeCache[
+        barcode
+      ] = {
+
+        cachedAt:
+          Date.now(),
+
+        product:
+          createCachedProduct(
+            product
+          )
+
+      };
+
+
+      const barcodes =
+        Object.keys(
+          barcodeCache
+        );
+
+
+      if (
+        barcodes.length >
+        BARCODE_CACHE_MAX_ITEMS
+      ) {
+
+        barcodes
+          .sort(
+            (first, second) =>
+              barcodeCache[first].cachedAt -
+              barcodeCache[second].cachedAt
+          )
+          .slice(
+            0,
+            barcodes.length -
+              BARCODE_CACHE_MAX_ITEMS
+          )
+          .forEach(
+            oldBarcode =>
+              delete barcodeCache[
+                oldBarcode
+              ]
+          );
+
+      }
+
+
+      saveBarcodeCache();
+
+    }
+
+
+    function createCachedProduct(
+      product
+    ) {
+
+      return {
+
+        productId:
+          product.productId || "",
+
+        brand:
+          product.brand || "",
+
+        material:
+          product.material || "",
+
+        series:
+          product.series || "",
+
+        colour:
+          product.colour || "",
+
+        colourCode:
+          product.colourCode || "",
+
+        packageType:
+          product.packageType || "",
+
+        weight:
+          product.weight || ""
+
+      };
+
+    }
+
+
+    function saveBarcodeCache() {
+
+      try {
+
+        localStorage.setItem(
+          BARCODE_CACHE_KEY,
+          JSON.stringify(
+            barcodeCache
+          )
+        );
+
+      } catch (error) {
+
+        console.warn(
+          "Unable to save barcode cache:",
+          error
+        );
+
+      }
+
+    }
+
+
     async function loadCatalogue() {
       const result =
         await jsonpRequest(
@@ -2082,6 +2362,97 @@
 
       catalogueItems =
         result.items;
+    }
+
+
+    async function loadBarcodeMap() {
+
+      if (
+        !operatorPinHash
+      ) {
+
+        return;
+
+      }
+
+
+      const result =
+        await jsonpRequest(
+          API_URL +
+          "?action=barcodeMap" +
+          "&pinHash=" +
+          encodeURIComponent(
+            operatorPinHash
+          )
+        );
+
+
+      if (
+        !result ||
+        result.success !== true ||
+        !Array.isArray(result.items)
+      ) {
+
+        throw new Error(
+          result?.error ||
+          "Unable to load barcode map."
+        );
+
+      }
+
+
+      const cachedAt =
+        Date.now();
+
+      const nextCache =
+        {};
+
+
+      result.items.forEach(
+        product => {
+
+          const barcode =
+            String(
+              product.barcode ||
+              ""
+            ).trim();
+
+
+          if (
+            !/^\d{13}$/.test(
+              barcode
+            )
+          ) {
+
+            return;
+
+          }
+
+
+          nextCache[
+            barcode
+          ] = {
+
+            cachedAt:
+              cachedAt,
+
+            product:
+              createCachedProduct(
+                product
+              )
+
+          };
+
+        }
+      );
+
+
+      barcodeCache =
+        nextCache;
+
+
+      saveBarcodeCache();
+
     }
 
 
@@ -2472,60 +2843,91 @@
 
     async function saveRegistration() {
       if (
+        registrationSubmitting ||
         !pendingBarcode ||
         !registration.productId
       ) {
         return;
       }
 
-      const pinHash =
-        await sha256Hex(
-          operatorPin
+      const button =
+        $("registerSaveButton");
+
+      registrationSubmitting =
+        true;
+
+      button.disabled =
+        true;
+
+      button.textContent =
+        "Registering...";
+
+      try {
+        const result =
+          await jsonpRequest(
+            API_URL +
+            "?action=registerBarcode" +
+            "&barcode=" +
+            encodeURIComponent(
+              pendingBarcode
+            ) +
+            "&productId=" +
+            encodeURIComponent(
+              registration.productId
+            ) +
+            "&pinHash=" +
+            encodeURIComponent(
+              operatorPinHash
+            )
+          );
+
+        if (
+          !result ||
+          result.success !== true
+        ) {
+          throw new Error(
+            result?.error ||
+            "Unable to register barcode."
+          );
+        }
+
+        const barcode =
+          pendingBarcode;
+
+        pendingBarcode =
+          "";
+
+        showScreen(
+          "scannerScreen"
         );
 
-      const result =
-        await jsonpRequest(
-          API_URL +
-          "?action=registerBarcode" +
-          "&barcode=" +
-          encodeURIComponent(
-            pendingBarcode
-          ) +
-          "&productId=" +
-          encodeURIComponent(
-            registration.productId
-          ) +
-          "&pinHash=" +
-          encodeURIComponent(
-            pinHash
-          )
+        await startScanner();
+
+        await processScan(
+          barcode
         );
 
-      if (
-        !result ||
-        result.success !== true
-      ) {
-        throw new Error(
-          result?.error ||
-          "Unable to register barcode."
+      } catch (error) {
+        console.error(error);
+
+        showMessage(
+          String(
+            error.message ||
+            error
+          ),
+          "error"
         );
+
+      } finally {
+        registrationSubmitting =
+          false;
+
+        button.disabled =
+          !registration.productId;
+
+        button.textContent =
+          "Register + Add";
       }
-
-      const barcode =
-        pendingBarcode;
-
-      pendingBarcode =
-        "";
-
-      showScreen(
-        "scannerScreen"
-      );
-
-      await startScanner();
-
-      await processScan(
-        barcode
-      );
     }
 
 
@@ -2564,7 +2966,28 @@
 
 
     async function saveManualEntry() {
+      if (
+        manualSubmitting
+      ) {
+
+        return;
+
+      }
+
+
       clearMessage();
+
+      const button =
+        $("manualSaveButton");
+
+      manualSubmitting =
+        true;
+
+      button.disabled =
+        true;
+
+      button.textContent =
+        "Saving...";
 
       const payload = {
         manual: true,
@@ -2606,62 +3029,85 @@
         }
       };
 
-      const form =
-        new URLSearchParams();
+      try {
+        const form =
+          new URLSearchParams();
 
-      form.append(
-        "payload",
-        JSON.stringify(
-          payload
-        )
-      );
-
-      const response =
-        await fetch(
-          API_URL,
-          {
-            method:
-              "POST",
-            body:
-              form
-          }
+        form.append(
+          "payload",
+          JSON.stringify(
+            payload
+          )
         );
 
-      const result =
-        await response.json();
-
-      if (
-        !result.success
-      ) {
-        throw new Error(
-          result.error ||
-          "Manual entry failed."
-        );
-      }
-
-      $("successDetails")
-        .innerHTML =
-          "<strong>Manual " +
-          escapeHtml(
-            payload.action
-          ) +
-          "</strong><br>" +
-          escapeHtml(
-            String(
-              payload.item.quantity
-            )
-          ) +
-          " rolls<br>" +
-          "Stock " +
-          escapeHtml(
-            String(
-              result.newStock
-            )
+        const response =
+          await fetch(
+            API_URL,
+            {
+              method:
+                "POST",
+              body:
+                form
+            }
           );
 
-      showScreen(
-        "successScreen"
-      );
+        const result =
+          await response.json();
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error ||
+            "Manual entry failed."
+          );
+        }
+
+        $("successDetails")
+          .innerHTML =
+            "<strong>Manual " +
+            escapeHtml(
+              payload.action
+            ) +
+            "</strong><br>" +
+            escapeHtml(
+              String(
+                payload.item.quantity
+              )
+            ) +
+            " rolls<br>" +
+            "Stock " +
+            escapeHtml(
+              String(
+                result.newStock
+              )
+            );
+
+        showScreen(
+          "successScreen"
+        );
+
+      } catch (error) {
+        console.error(error);
+
+        showMessage(
+          String(
+            error.message ||
+            error
+          ),
+          "error"
+        );
+
+      } finally {
+        manualSubmitting =
+          false;
+
+        button.disabled =
+          false;
+
+        button.textContent =
+          "Save Manual Entry";
+      }
     }
 
 
@@ -3321,6 +3767,15 @@
 
     async function finishSession() {
 
+      if (
+        sessionSubmitting
+      ) {
+
+        return;
+
+      }
+
+
       clearMessage();
 
 
@@ -3370,6 +3825,10 @@
 
       const button =
         $("finishButton");
+
+
+      sessionSubmitting =
+        true;
 
 
       button.disabled =
@@ -3530,6 +3989,10 @@
 
 
         button.disabled =
+          false;
+
+
+        sessionSubmitting =
           false;
 
 
@@ -3793,6 +4256,10 @@
 
 
       operatorPin =
+        "";
+
+
+      operatorPinHash =
         "";
 
 
