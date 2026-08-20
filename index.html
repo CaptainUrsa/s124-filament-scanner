@@ -154,6 +154,23 @@
       font-size: 30px;
     }
 
+    .barcode-entry {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .barcode-entry input {
+      min-width: 0;
+      margin: 0;
+    }
+
+    .barcode-entry button {
+      width: auto;
+      white-space: nowrap;
+    }
+
     .session-header {
       display: flex;
       align-items: center;
@@ -173,6 +190,39 @@
       margin-top: 4px;
       color: #667085;
       font-size: 13px;
+    }
+
+    .sync-lights {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .sync-light {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #98a2b3;
+      box-shadow: 0 0 0 3px #f2f4f7;
+    }
+
+    .sync-light.syncing {
+      background: #f79009;
+      animation: sync-pulse 1.2s ease-in-out infinite;
+    }
+
+    .sync-light.ready {
+      background: #12b76a;
+    }
+
+    .sync-light.warning {
+      background: #f04438;
+    }
+
+    @keyframes sync-pulse {
+      50% {
+        opacity: 0.45;
+      }
     }
 
     .count-badge {
@@ -600,6 +650,19 @@
 
         </div>
 
+        <div class="sync-lights" role="status" aria-live="polite">
+          <span
+            id="barcodeMapLight"
+            class="sync-light"
+            aria-label="Barcode map waiting"
+          ></span>
+          <span
+            id="catalogueLight"
+            class="sync-light"
+            aria-label="Catalogue waiting"
+          ></span>
+        </div>
+
       </div>
 
 
@@ -702,6 +765,25 @@
         class="status"
       >
         Starting camera...
+      </div>
+
+
+      <div class="barcode-entry">
+        <input
+          id="barcodeInput"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          maxlength="13"
+          placeholder="Enter or scan barcode"
+          aria-label="Barcode"
+        >
+        <button
+          id="barcodeInputButton"
+          type="button"
+        >
+          Add
+        </button>
       </div>
 
 
@@ -944,6 +1026,8 @@
 
     let lastBarcode = "";
     let lastBarcodeTime = 0;
+    let wiredBarcodeBuffer = "";
+    let wiredBarcodeTimer = null;
 
     let activeVideoTrack = null;
     let torchOn = false;
@@ -1118,6 +1202,51 @@
       );
 
 
+    $("barcodeInputButton")
+      .addEventListener(
+        "click",
+        submitBarcodeInput
+      );
+
+
+    $("barcodeInput")
+      .addEventListener(
+        "input",
+        event => {
+          event.target.value =
+            event.target.value
+              .replace(
+                /\D/g,
+                ""
+              )
+              .slice(
+                0,
+                13
+              );
+        }
+      );
+
+
+    $("barcodeInput")
+      .addEventListener(
+        "keydown",
+        event => {
+          if (
+            event.key === "Enter"
+          ) {
+            event.preventDefault();
+            submitBarcodeInput();
+          }
+        }
+      );
+
+
+    document.addEventListener(
+      "keydown",
+      handleWiredScannerKey
+    );
+
+
     $("operatorPin")
       .addEventListener(
         "keydown",
@@ -1268,15 +1397,48 @@
           "actionScreen"
         );
 
-        loadCatalogue()
-          .catch(
-            error => console.error(error)
-          );
 
+        setBarcodeMapStatus(
+          "syncing"
+        );
 
         loadBarcodeMap()
           .catch(
-            error => console.error(error)
+            error => {
+              console.error(error);
+
+              setBarcodeMapStatus(
+                Object.keys(
+                  barcodeCache
+                ).length > 0
+                  ? "saved"
+                  : "unavailable"
+              );
+            }
+          )
+          .finally(
+            () => {
+              setCatalogueStatus(
+                "syncing"
+              );
+
+              loadCatalogue()
+                .then(
+                  () =>
+                    setCatalogueStatus(
+                      "ready"
+                    )
+                )
+                .catch(
+                  error => {
+                    console.error(error);
+
+                    setCatalogueStatus(
+                      "unavailable"
+                    );
+                  }
+                );
+            }
           );
 
 
@@ -1804,6 +1966,155 @@
           result.getText()
         )
           .trim();
+
+
+      queueBarcode(
+        barcode
+      );
+
+    }
+
+
+    function submitBarcodeInput() {
+
+      const input =
+        $("barcodeInput");
+
+      const barcode =
+        String(
+          input.value || ""
+        ).trim();
+
+
+      if (
+        !/^\d{13}$/.test(
+          barcode
+        )
+      ) {
+
+        showMessage(
+          "Enter a 13-digit barcode.",
+          "error"
+        );
+
+        input.focus();
+
+        return;
+
+      }
+
+
+      clearMessage();
+
+      input.value =
+        "";
+
+      queueBarcode(
+        barcode
+      );
+
+      input.focus();
+
+    }
+
+
+    function handleWiredScannerKey(
+      event
+    ) {
+
+      if (
+        $("scannerScreen")
+          .classList
+          .contains("hidden") ||
+        event.target ===
+          $("barcodeInput") ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        /^\d$/.test(
+          event.key
+        )
+      ) {
+
+        event.preventDefault();
+
+        wiredBarcodeBuffer =
+          (
+            wiredBarcodeBuffer +
+            event.key
+          ).slice(
+            -13
+          );
+
+        clearTimeout(
+          wiredBarcodeTimer
+        );
+
+        wiredBarcodeTimer =
+          setTimeout(
+            () => {
+              wiredBarcodeBuffer =
+                "";
+            },
+            500
+          );
+
+        return;
+
+      }
+
+
+      if (
+        event.key === "Enter" &&
+        wiredBarcodeBuffer
+      ) {
+
+        event.preventDefault();
+
+        const barcode =
+          wiredBarcodeBuffer;
+
+        wiredBarcodeBuffer =
+          "";
+
+        clearTimeout(
+          wiredBarcodeTimer
+        );
+
+
+        if (
+          /^\d{13}$/.test(
+            barcode
+          )
+        ) {
+
+          queueBarcode(
+            barcode
+          );
+
+        }
+
+      }
+
+    }
+
+
+    function queueBarcode(
+      barcode
+    ) {
+
+      barcode =
+        String(
+          barcode || ""
+        ).trim();
 
 
       if (
@@ -2452,6 +2763,135 @@
 
 
       saveBarcodeCache();
+
+
+      setBarcodeMapStatus(
+        "ready",
+        Object.keys(
+          nextCache
+        ).length
+      );
+
+    }
+
+
+    function setBarcodeMapStatus(
+      state,
+      itemCount
+    ) {
+
+      const element =
+        $("barcodeMapLight");
+
+
+      if (
+        !element
+      ) {
+
+        return;
+
+      }
+
+
+      element.className =
+        "sync-light " +
+        (
+          state === "saved"
+            ? "ready"
+            : state === "unavailable"
+              ? "warning"
+              : state
+        );
+
+
+      if (
+        state === "ready"
+      ) {
+
+        element.setAttribute(
+          "aria-label",
+          "Barcode map ready, " +
+          String(
+            itemCount || 0
+          ) +
+          " barcodes"
+        );
+
+        return;
+
+      }
+
+
+      if (
+        state === "saved"
+      ) {
+
+        element.setAttribute(
+          "aria-label",
+          "Using saved barcode map"
+        );
+
+        return;
+
+      }
+
+
+      if (
+        state === "unavailable"
+      ) {
+
+        element.setAttribute(
+          "aria-label",
+          "Barcode map unavailable, online lookup active"
+        );
+
+        return;
+
+      }
+
+
+      element.setAttribute(
+        "aria-label",
+        "Syncing barcode map"
+      );
+
+    }
+
+
+    function setCatalogueStatus(
+      state
+    ) {
+
+      const element =
+        $("catalogueLight");
+
+
+      if (
+        !element
+      ) {
+
+        return;
+
+      }
+
+
+      element.className =
+        "sync-light " +
+        (
+          state === "unavailable"
+            ? "warning"
+            : state
+        );
+
+
+      element.setAttribute(
+        "aria-label",
+        state === "ready"
+          ? "Catalogue ready"
+          : state === "unavailable"
+            ? "Catalogue unavailable"
+            : "Syncing catalogue"
+      );
 
     }
 
